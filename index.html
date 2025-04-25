@@ -173,7 +173,7 @@
       background: #2a3a2a;
       opacity: 0.7;
     }
-    .task-card.locked, .upgrade-card.locked {
+    .task-card.locked {
       background: #1a0d1a;
       opacity: 0.5;
     }
@@ -228,7 +228,7 @@
     }
     #log {
       margin-top: 20px;
-      max-height: 120px;
+      max-height: 200px;
       overflow-y: auto;
       width: 100%;
       background: #2a1a2a;
@@ -298,7 +298,7 @@
       knowledgeBoost: { 
         level: 0, maxLevel: 3, cost: { knowledge: 15 }, 
         description: "Increase Knowledge yield by 1 per level.", 
-        unlocked: false, unlockTask: "Access Black Archives" 
+        unlocked: false, upgradeTask: "Access Black Archives" 
       },
       boneCollector: { 
         level: 0, maxLevel: 3, cost: { bones: 10, mana: 15 }, 
@@ -1033,6 +1033,9 @@
       if (frameCount % 600 === 0) { // Every 10 seconds
         saveGame();
       }
+      updateResourcesDisplay();
+      updateButtons();
+      updateLog();
       updateStatus();
     }
 
@@ -1081,8 +1084,13 @@
       const importInput = document.getElementById('import-save');
       const wipeButton = document.getElementById('wipe-save');
 
+      const focusableElements = modal.querySelectorAll('button, input');
+      const firstFocusable = focusableElements[0];
+      const lastFocusable = focusableElements[focusableElements.length - 1];
+
       cogButton.addEventListener('click', () => {
         modal.style.display = 'flex';
+        firstFocusable.focus();
       });
 
       closeButton.addEventListener('click', () => {
@@ -1091,6 +1099,25 @@
 
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+
+      modal.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          if (e.shiftKey) {
+            if (document.activeElement === firstFocusable) {
+              e.preventDefault();
+              lastFocusable.focus();
+            }
+          } else {
+            if (document.activeElement === lastFocusable) {
+              e.preventDefault();
+              firstFocusable.focus();
+            }
+          }
+        }
+        if (e.key === 'Escape') {
           modal.style.display = 'none';
         }
       });
@@ -1124,6 +1151,11 @@
           reader.onload = (event) => {
             try {
               const gameState = JSON.parse(event.target.result);
+              if (!gameState.resources || !gameState.upgrades || !gameState.tasks ||
+                  !gameState.loopCount || !gameState.timeLeft || !gameState.logMessages ||
+                  !gameState.statusMessage || !gameState.taskStartTime) {
+                throw new Error('Invalid save file structure');
+              }
               resources = gameState.resources;
               upgrades = gameState.upgrades;
               tasks = gameState.tasks;
@@ -1143,7 +1175,7 @@
               updateLog();
               modal.style.display = 'none';
             } catch (error) {
-              alert('Invalid save file!');
+              alert('Invalid save file: ' + error.message);
             }
           };
           reader.readAsText(file);
@@ -1179,8 +1211,22 @@
           );
           let hasResources = checkResources(task);
           let card = document.createElement("div");
-          card.className = `task-card ${isLocked || !hasResources ? "locked" : ""} ${task.repeatable ? "repeatable" : ""}`;
-          let costText = task.cost ? `Cost: ${Object.entries(task.cost).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
+          card.className = `task-card ${isLocked ? "locked" : ""} ${task.repeatable ? "repeatable" : ""}`;
+          let adjustedCost = task.cost ? Object.entries(task.cost).reduce((acc, [k, v]) => {
+            let cost = v;
+            if (k === "mana" && upgrades.manaEfficiency.level > 0) {
+              cost *= (1 - 0.1 * upgrades.manaEfficiency.level);
+            }
+            if (upgrades.nihilisticResolve.level > 0) {
+              cost *= (1 - 0.05 * upgrades.nihilisticResolve.level);
+            }
+            if ((k === "essence" || k === "relics") && upgrades.ritualPrecision.level > 0) {
+              cost *= (1 - 0.1 * upgrades.ritualPrecision.level);
+            }
+            acc[k] = Math.ceil(cost);
+            return acc;
+          }, {}) : {};
+          let costText = task.cost ? `Cost: ${Object.entries(adjustedCost).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
           let yieldsText = task.yields ? `Yields: ${Object.entries(task.yields).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
           card.innerHTML = `
             <div class="task-name">${task.name}</div>
@@ -1190,13 +1236,21 @@
             ${yieldsText ? `<div>${yieldsText}</div>` : ""}
             <div class="progress-bar"><div class="progress" id="progress-${index}"></div></div>
           `;
-          if (!isLocked && hasResources && (task.unlocked || !task.unlockTask)) {
+          if (!isLocked && (task.unlocked || !task.unlockTask)) {
             let btn = createButton(`Start ${task.name}`);
             btn.elt.style.marginTop = "5px";
             btn.elt.id = `button-${index}`;
+            btn.elt.disabled = !hasResources || currentTask !== null;
             btn.mousePressed(() => startTask(index));
             btn.parent(card);
-            buttons[index] = btn;
+            if (!hasResources) {
+              card.innerHTML += `<div>Insufficient resources: ${costText}</div>`;
+            }
+            if (currentTask === index) {
+              let progressPercent = (taskProgress / getTaskTime(task)) * 100;
+              let progressBar = document.getElementById(`progress-${index}`);
+              if (progressBar) progressBar.style.width = `${progressPercent}%`;
+            }
           } else {
             let lockReason = isLocked ? `Requires: ${task.requires.join(", ")}` : 
                            !task.unlocked ? `Locked: Complete ${task.unlockTask}` : 
@@ -1210,7 +1264,6 @@
           }
         }
       });
-      updateButtons();
     }
 
     function renderUpgradeList() {
@@ -1223,9 +1276,23 @@
         if (upgrade.unlocked) {
           let canAfford = checkResources({ cost: upgrade.cost });
           let isMaxed = upgrade.level >= upgrade.maxLevel;
+          let adjustedCost = {};
+          for (let [resource, amount] of Object.entries(upgrade.cost)) {
+            let cost = amount;
+            if (resource === "mana" && upgrades.manaEfficiency.level > 0) {
+              cost *= (1 - 0.1 * upgrades.manaEfficiency.level);
+            }
+            if (upgrades.nihilisticResolve.level > 0) {
+              cost *= (1 - 0.05 * upgrades.nihilisticResolve.level);
+            }
+            if ((resource === "essence" || resource === "relics") && upgrades.ritualPrecision.level > 0) {
+              cost *= (1 - 0.1 * upgrades.ritualPrecision.level);
+            }
+            adjustedCost[resource] = Math.ceil(cost);
+          }
+          let costText = `Cost: ${Object.entries(adjustedCost).map(([k, v]) => `${k}: ${v}`).join(", ")}`;
           let card = document.createElement("div");
           card.className = `upgrade-card ${!canAfford || isMaxed ? "locked" : ""}`;
-          let costText = `Cost: ${Object.entries(upgrade.cost).map(([k, v]) => `${k}: ${v}`).join(", ")}`;
           card.innerHTML = `
             <div class="upgrade-name">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
             <div>${upgrade.description}</div>
@@ -1264,7 +1331,6 @@
             }
             updateResourcesDisplay();
           }
-          updateButtons();
           renderTaskList();
           saveGame();
         }
@@ -1309,7 +1375,7 @@
       }
       statusMessage = `${task.name} completed!`;
       logMessages.unshift(`${task.name} completed in ${completionTime}s`);
-      if (logMessages.length > 5) logMessages.pop();
+      if (logMessages.length > 10) logMessages.pop();
       updateLog();
       currentTask = null;
       taskProgress = 0;
@@ -1335,7 +1401,7 @@
         }
         statusMessage = `${key.replace(/([A-Z])/g, ' $1').trim()} upgraded to level ${upgrade.level}!`;
         logMessages.unshift(statusMessage);
-        if (logMessages.length > 5) logMessages.pop();
+        if (logMessages.length > 10) logMessages.pop();
         updateLog();
         updateResourcesDisplay();
         renderUpgradeList();
@@ -1358,9 +1424,9 @@
         if ((resource === "essence" || resource === "relics") && upgrades.ritualPrecision.level > 0) {
           cost *= (1 - 0.1 * upgrades.ritualPrecision.level);
         }
-        adjustedCost[resource] = cost;
+        adjustedCost[resource] = Math.ceil(cost);
       }
-      return Object.entries(adjustedCost).every(([resource, amount]) => resources[resource].value >= Math.ceil(amount));
+      return Object.entries(adjustedCost).every(([resource, amount]) => resources[resource].value >= amount);
     }
 
     function getTaskTime(task) {
@@ -1390,7 +1456,7 @@
       }
       statusMessage = "Discovered! Time loop resets with greater mastery.";
       logMessages.unshift(`Cycle ${loopCount - 1} ended. Loop reset.`);
-      if (logMessages.length > 5) logMessages.pop();
+      if (logMessages.length > 10) logMessages.pop();
       updateLog();
       updateLoopDisplay();
       updateTimeDisplay();
@@ -1405,7 +1471,7 @@
 
     function updateTimeDisplay() {
       document.getElementById("time").innerText = `Discovery in: ${timeLeft}s`;
-      document.getElementById("time-progress").style.width = `${(timeLeft / 60) * 100}%`;
+      document.getElementById("time-progress").style.width = `${Math.max(0, Math.min(100, (timeLeft / 60) * 100))}%`;
     }
 
     function updateStatus() {
@@ -1429,20 +1495,16 @@
         let btn = buttons[index];
         if (btn) {
           if (task.completed && !task.repeatable) {
-            btn.attribute("disabled", true);
+            btn.elt.disabled = true;
             btn.html(`${task.name} (Done)`);
           } else {
             let isLocked = task.requires && !task.requires.every(req => 
               tasks.find(t => t.name === req).completed
             );
             let hasResources = checkResources(task);
-            if (isLocked || !hasResources || !task.unlocked) {
-              btn.attribute("disabled", true);
-              btn.html(`Start ${task.name}`);
-            } else {
-              btn.removeAttribute("disabled");
-              btn.html(`Start ${task.name}`);
-            }
+            let isActiveTask = currentTask !== null;
+            btn.elt.disabled = isLocked || !hasResources || !task.unlocked || isActiveTask;
+            btn.html(`Start ${task.name}`);
           }
         }
       });
