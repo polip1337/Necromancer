@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Necromancer's Eternal Ascendancy</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text&display=swap');
+    body {
+      font-family: 'Crimson Text', serif;
+      background: linear-gradient(180deg, #1a0d1a 0%, #2b1a2b 100%);
+      color: #e0d0e0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #container {
+      display: flex;
+      width: 100%;
+      max-width: 1200px;
+      gap: 20px;
+      position: relative;
+    }
+    #cog-button {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      cursor: pointer;
+      background: #2a1a2a;
+      border: 1px solid #4b0082;
+      border-radius: 5px;
+      padding: 5px;
+      color: #b19cd9;
+      transition: background 0.2s, transform 0.2s;
+    }
+    #cog-button:hover {
+      background: #6a0dad;
+      transform: scale(1.1);
+    }
+    #options-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    #options-content {
+      background: #2a1a2a;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #4b0082;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      width: 300px;
+      text-align: center;
+      color: #e0d0e0;
+    }
+    #options-content h3 {
+      font-family: 'Cinzel', serif;
+      color: #b19cd9;
+      margin: 0 0 15px;
+    }
+    #options-content button, #options-content input {
+      display: block;
+      width: 80%;
+      margin: 10px auto;
+      padding: 8px;
+      font-family: 'Cinzel', serif;
+      font-size: 14px;
+      background: linear-gradient(90deg, #4b0082, #6a0dad);
+      color: #e0d0e0;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #options-content button:hover, #options-content input:hover {
+      background: linear-gradient(90deg, #6a0dad, #98fb98);
+    }
+    #resource-panel {
+      width: 200px;
+      background: #2a1a2a;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 1px solid #4b0082;
+    }
+    #resources h3 {
+      font-family: 'Cinzel', serif;
+      color: #b19cd9;
+      margin: 0 0 10px;
+      text-align: center;
+    }
+    .resource-item {
+      font-size: 14px;
+      margin: 5px 0;
+      color: #d8bfd8;
+    }
+    .resource-item span {
+      color: #98fb98;
+    }
+    #main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    #info {
+      text-align: center;
+      background: #2a1a2a;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 1px solid #4b0082;
+    }
+    #info h2 {
+      font-family: 'Cinzel', serif;
+      color: #b19cd9;
+      margin: 0 0 10px;
+    }
+    #time-bar {
+      height: 10px;
+      background: #555;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    #time-progress {
+      height: 100%;
+      background: linear-gradient(90deg, #4b0082, #98fb98);
+      transition: width 0.3s ease;
+    }
+    #board {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    #task-list, #repeatable-task-list, #upgrade-panel {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #2a1a2a;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 1px solid #4b0082;
+    }
+    #task-list h3, #repeatable-task-list h3, #upgrade-panel h3 {
+      font-family: 'Cinzel', serif;
+      color: #b19cd9;
+      margin: 0 0 10px;
+      text-align: center;
+    }
+    .task-card, .upgrade-card {
+      background: #3a1c3a;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      border: 1px solid #4b0082;
+      transition: transform 0.2s;
+    }
+    .task-card:hover, .upgrade-card:hover {
+      transform: translateY(-2px);
+    }
+    .task-card.completed {
+      background: #2a3a2a;
+      opacity: 0.7;
+    }
+    .task-card.locked, .upgrade-card.locked {
+      background: #1a0d1a;
+      opacity: 0.5;
+    }
+    .task-card.repeatable {
+      padding: 8px;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .task-name, .upgrade-name {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      color: #d8bfd8;
+      margin-bottom: 5px;
+    }
+    .task-card div, .upgrade-card div {
+      font-size: 14px;
+      color: #e0d0e0;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #555;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    .progress {
+      height: 100%;
+      background: linear-gradient(90deg, #4b0082, #98fb98);
+      width: 0;
+      transition: width 0.3s ease;
+    }
+    button {
+      padding: 8px;
+      font-size: 14px;
+      font-family: 'Cinzel', serif;
+      cursor: pointer;
+      background: linear-gradient(90deg, #4b0082, #6a0dad);
+      color: #e0d0e0;
+      border: none;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: background 0.2s, transform 0.2s;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #6a0dad, #98fb98);
+      transform: scale(1.05);
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    #log {
+      margin-top: 20px;
+      max-height: 120px;
+      overflow-y: auto;
+      width: 100%;
+      background: #2a1a2a;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 1px solid #4b0082;
+      font-size: 14px;
+      color: #d8bfd8;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="cog-button">⚙️</div>
+    <div id="resource-panel">
+      <h3>Resources</h3>
+      <div id="resources"></div>
+    </div>
+    <div id="main-content">
+      <div id="info">
+        <h2>Necromancer's Eternal Ascendancy</h2>
+        <p id="loop">Cycle: 1</p>
+        <p id="time">Discovery in: 60s</p>
+        <div id="time-bar"><div id="time-progress"></div></div>
+        <p id="status">Begin your path to eternal dominion!</p>
+      </div>
+      <div id="board">
+        <div id="task-list">
+          <h3>Story Tasks</h3>
+        </div>
+        <div id="repeatable-task-list">
+          <h3>Resource Tasks</h3>
+        </div>
+        <div id="upgrade-panel">
+          <h3>Upgrades</h3>
+        </div>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+  <div id="options-modal">
+    <div id="options-content">
+      <h3>Options</h3>
+      <button id="export-save">Export Save</button>
+      <input type="file" id="import-save" accept=".json">
+      <button id="wipe-save">Wipe Save</button>
+      <button id="close-modal">Close</button>
+    </div>
+  </div>
+  <script>
+    let resources = {
+      mana: { value: 0, max: 100, unlocked: true },
+      knowledge: { value: 0, max: 50, unlocked: false },
+      bones: { value: 0, max: 50, unlocked: false },
+      bodies: { value: 0, max: 20, unlocked: false },
+      souls: { value: 0, max: 20, unlocked: false },
+      essence: { value: 0, max: 50, unlocked: false },
+      relics: { value: 0, max: 20, unlocked: false }
+    };
+    let upgrades = {
+      manaEfficiency: { 
+        level: 0, maxLevel: 3, cost: { mana: 20, knowledge: 10 }, 
+        description: "Reduce Mana costs by 10% per level.", 
+        unlocked: false, unlockTask: "Brew Marrowwine" 
+      },
+      knowledgeBoost: { 
+        level: 0, maxLevel: 3, cost: { knowledge: 15 }, 
+        description: "Increase Knowledge yield by 1 per level.", 
+        unlocked: false, unlockTask: "Access Black Archives" 
+      },
+      boneCollector: { 
+        level: 0, maxLevel: 3, cost: { bones: 10, mana: 15 }, 
+        description: "Increase Bones yield by 1 per level.", 
+        unlocked: false, unlockTask: "Craft Bone Golems" 
+      },
+      swiftRituals: { 
+        level: 0, maxLevel: 3, cost: { mana: 25, knowledge: 15 }, 
+        description: "Reduce task times by 10% per level.", 
+        unlocked: false, unlockTask: "Decipher Soul Anchors" 
+      },
+      soulHarvester: { 
+        level: 0, maxLevel: 3, cost: { souls: 5, mana: 20 }, 
+        description: "Increase Souls yield by 1 per level.", 
+        unlocked: false, unlockTask: "Refine Etherium" 
+      },
+      crowFamiliar: { 
+        level: 0, maxLevel: 3, cost: { mana: 15, bones: 5 }, 
+        description: "Reduce task times by 5% per level.", 
+        unlocked: false, unlockTask: "Reanimate Crow" 
+      },
+      nihilisticResolve: { 
+        level: 0, maxLevel: 3, cost: { mana: 10, knowledge: 10 }, 
+        description: "Reduce all resource costs by 5% per level.", 
+        unlocked: false, unlockTask: "Reject Divinity" 
+      },
+      resourceVault: { 
+        level: 0, maxLevel: 3, cost: { mana: 30, bones: 10, souls: 5 }, 
+        description: "Increase all resource maxes by 20% per level.", 
+        unlocked: false, unlockTask: "Build Ebony Citadel" 
+      },
+      essenceAmplifier: { 
+        level: 0, maxLevel: 3, cost: { essence: 10, mana: 15 }, 
+        description: "Increase Essence yield by 1 per level.", 
+        unlocked: false, unlockTask: "Refine Etherium" 
+      },
+      relicMastery: { 
+        level: 0, maxLevel: 3, cost: { relics: 5, knowledge: 10 }, 
+        description: "Increase Relic yield by 1 per level.", 
+        unlocked: false, unlockTask: "Build Ebony Citadel" 
+      },
+      ritualPrecision: { 
+        level: 0, maxLevel: 3, cost: { essence: 10, relics: 5 }, 
+        description: "Reduce Essence/Relic costs by 10% per level.", 
+        unlocked: false, unlockTask: "Perform Eclipse Oath" 
+      }
+    };
+    let tasks = [
+      // Repeatable Tasks
+      { 
+        name: "Siphon Mana", 
+        baseTime: 4, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { mana: 5 }, 
+        description: "Draw mana from the ethereal void.", 
+        unlocked: true 
+      },
+      { 
+        name: "Seek Knowledge", 
+        baseTime: 4, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { knowledge: 3 }, 
+        description: "Study occult lore.", 
+        unlocked: false, unlockTask: "Reject Divinity" 
+      },
+      { 
+        name: "Gather Bones", 
+        baseTime: 5, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { bones: 2 }, 
+        description: "Collect bones from graves.", 
+        unlocked: false, unlockTask: "Steal Grimoire" 
+      },
+      { 
+        name: "Steal Bodies", 
+        baseTime: 6, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { bodies: 1 }, 
+        description: "Procure corpses at night.", 
+        unlocked: false, unlockTask: "Face Undead Trials" 
+      },
+      { 
+        name: "Trap Souls", 
+        baseTime: 6, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { souls: 1 }, 
+        description: "Capture lost souls.", 
+        unlocked: false, unlockTask: "Track Malakar" 
+      },
+      { 
+        name: "Extract Essence", 
+        baseTime: 5, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { essence: 3 }, 
+        description: "Distill magical essence from the void.", 
+        unlocked: false, unlockTask: "Learn Mana Leeching" 
+      },
+      { 
+        name: "Unearth Relics", 
+        baseTime: 6, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        repeatable: true, 
+        yields: { relics: 1 }, 
+        description: "Excavate ancient artifacts.", 
+        unlocked: false, unlockTask: "Access Black Archives" 
+      },
+      // Stage 1: Tragic Origins
+      { 
+        name: "Survive Plague", 
+        baseTime: 6, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Reject Divinity"], 
+        cost: { mana: 5 }, 
+        description: "Endure the plague that claims your family.", 
+        resourceMaxIncrease: { mana: 25 } 
+      },
+      { 
+        name: "Reject Divinity", 
+        baseTime: 5, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Steal Grimoire"], 
+        requires: ["Survive Plague"], 
+        cost: { knowledge: 3 }, 
+        description: "Denounce gods, embracing death’s power.", 
+        resourceMaxIncrease: { knowledge: 10 } 
+      },
+      { 
+        name: "Steal Grimoire", 
+        baseTime: 8, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Reanimate Crow"], 
+        requires: ["Reject Divinity"], 
+        cost: { mana: 5, knowledge: 5 }, 
+        description: "Steal a grimoire to learn necromancy." 
+      },
+      { 
+        name: "Reanimate Crow", 
+        baseTime: 10, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Flee Village"], 
+        requires: ["Steal Grimoire"], 
+        cost: { mana: 10, bones: 1 }, 
+        description: "Reanimate a crow, your first triumph." 
+      },
+      { 
+        name: "Flee Village", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Vow Vengeance"], 
+        requires: ["Reanimate Crow"], 
+        cost: { mana: 15, bodies: 1 }, 
+        description: "Escape as elders burn your home." 
+      },
+      { 
+        name: "Vow Vengeance", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Track Malakar", "Defile Temple"], 
+        requires: ["Flee Village"], 
+        cost: { mana: 20, souls: 2 }, 
+        description: "Swear to master death for revenge.", 
+        resourceMaxIncrease: { souls: 5 } 
+      },
+      // Stage 2: Gathering Knowledge (Scholarly Path)
+      { 
+        name: "Track Malakar", 
+        baseTime: 6, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Face Undead Trials"], 
+        requires: ["Vow Vengeance"], 
+        cost: { mana: 5, knowledge: 3 }, 
+        description: "Locate Malakar in the Ashen Catacombs." 
+      },
+      { 
+        name: "Face Undead Trials", 
+        baseTime: 8, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Study Soul-Binding", "Learn Corpse Preservation"], 
+        requires: ["Track Malakar"], 
+        cost: { mana: 10, bones: 1 }, 
+        description: "Survive undead trials to earn Malakar’s trust." 
+      },
+      { 
+        name: "Study Soul-Binding", 
+        baseTime: 7, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Poison Malakar"], 
+        requires: ["Face Undead Trials"], 
+        cost: { knowledge: 5, souls: 1 }, 
+        description: "Learn advanced soul-binding techniques." 
+      },
+      { 
+        name: "Learn Corpse Preservation", 
+        baseTime: 7, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Poison Malakar"], 
+        requires: ["Face Undead Trials"], 
+        cost: { knowledge: 5, bodies: 1 }, 
+        description: "Master preserving corpses for rituals.", 
+        resourceMaxIncrease: { bodies: 5 } 
+      },
+      { 
+        name: "Poison Malakar", 
+        baseTime: 10, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Steal Codex of the Veil"], 
+        requires: ["Study Soul-Binding", "Learn Corpse Preservation"], 
+        cost: { mana: 15, knowledge: 5 }, 
+        description: "Betray and poison Malakar for his secrets." 
+      },
+      { 
+        name: "Steal Codex of the Veil", 
+        baseTime: 8, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Decipher Soul Anchors", "Learn Mana Leeching"], 
+        requires: ["Poison Malakar"], 
+        cost: { mana: 10, knowledge: 5 }, 
+        description: "Seize Malakar’s Codex of lichdom rituals." 
+      },
+      { 
+        name: "Decipher Soul Anchors", 
+        baseTime: 9, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Infiltrate Libraries"], 
+        requires: ["Steal Codex of the Veil"], 
+        cost: { knowledge: 7, souls: 1 }, 
+        description: "Decode soul anchor rituals in the Codex." 
+      },
+      { 
+        name: "Learn Mana Leeching", 
+        baseTime: 9, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Infiltrate Libraries"], 
+        requires: ["Steal Codex of the Veil"], 
+        cost: { mana: 15, knowledge: 5 }, 
+        description: "Master mana leeching from the Codex." 
+      },
+      { 
+        name: "Infiltrate Libraries", 
+        baseTime: 10, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Corrupt Historian"], 
+        requires: ["Decipher Soul Anchors", "Learn Mana Leeching"], 
+        cost: { mana: 10, knowledge: 5 }, 
+        description: "Copy ley line texts as a disguised scholar." 
+      },
+      { 
+        name: "Corrupt Historian", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Access Black Archives"], 
+        requires: ["Infiltrate Libraries"], 
+        cost: { mana: 15, souls: 1 }, 
+        description: "Bribe a historian for Black Archives access." 
+      },
+      { 
+        name: "Access Black Archives", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Raid Battlefields"], 
+        requires: ["Corrupt Historian"], 
+        cost: { knowledge: 10, souls: 1 }, 
+        description: "Study heretical texts in the Black Archives.", 
+        resourceMaxIncrease: { knowledge: 25 } 
+      },
+      // Stage 3: Securing Resources (Aggressive Path)
+      { 
+        name: "Defile Temple", 
+        baseTime: 14, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Brew Marrowwine"], 
+        requires: ["Vow Vengeance"], 
+        cost: { mana: 20, souls: 2 }, 
+        description: "Siphon mana from a Ley Line Nexus." 
+      },
+      { 
+        name: "Brew Marrowwine", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Reanimate Knights"], 
+        requires: ["Defile Temple"], 
+        cost: { mana: 15, bones: 3, souls: 1 }, 
+        description: "Craft Marrowwine to boost mana.", 
+        resourceMaxIncrease: { mana: 50 } 
+      },
+      { 
+        name: "Reanimate Knights", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Engineer Plaguebearers"], 
+        requires: ["Brew Marrowwine"], 
+        cost: { mana: 20, bodies: 3 }, 
+        description: "Raise knights as Eclipse Knights." 
+      },
+      { 
+        name: "Engineer Plaguebearers", 
+        baseTime: 14, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Seize Fissure"], 
+        requires: ["Reanimate Knights"], 
+        cost: { mana: 25, bodies: 3 }, 
+        description: "Create Plaguebearers with miasma." 
+      },
+      { 
+        name: "Seize Fissure", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Build Ebony Citadel"], 
+        requires: ["Engineer Plaguebearers"], 
+        cost: { mana: 30, bones: 5 }, 
+        description: "Capture a fissure for your fortress." 
+      },
+      // Stage 4: Resource Consolidation
+      { 
+        name: "Raid Battlefields", 
+        baseTime: 10, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Craft Bone Golems"], 
+        requires: ["Access Black Archives"], 
+        cost: { mana: 10, bones: 2 }, 
+        description: "Plunder battlefields for skeletal remains." 
+      },
+      { 
+        name: "Craft Bone Golems", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Discover Dragon Graveyard"], 
+        requires: ["Raid Battlefields"], 
+        cost: { mana: 15, bones: 5 }, 
+        description: "Build Bone Golems to mine crypts.", 
+        resourceMaxIncrease: { bones: 10 } 
+      },
+      { 
+        name: "Discover Dragon Graveyard", 
+        baseTime: 14, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Harvest Dragon Bones"], 
+        requires: ["Craft Bone Golems"], 
+        cost: { mana: 20, knowledge: 5 }, 
+        description: "Find a Dragon Graveyard for rare bones." 
+      },
+      { 
+        name: "Harvest Dragon Bones", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Sabotage War"], 
+        requires: ["Discover Dragon Graveyard"], 
+        cost: { mana: 25, bones: 5, essence: 3 }, 
+        description: "Collect femurs for a Dracolich prototype." 
+      },
+      { 
+        name: "Sabotage War", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Loot Battlefields"], 
+        requires: ["Harvest Dragon Bones"], 
+        cost: { mana: 15, knowledge: 5 }, 
+        description: "Incite a war for mass casualties." 
+      },
+      { 
+        name: "Loot Battlefields", 
+        baseTime: 10, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Establish Thralls"], 
+        requires: ["Sabotage War"], 
+        cost: { mana: 10, bodies: 2 }, 
+        description: "Harvest corpses from war-torn fields." 
+      },
+      { 
+        name: "Establish Thralls", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Trap Wraiths"], 
+        requires: ["Loot Battlefields"], 
+        cost: { mana: 15, bodies: 2 }, 
+        description: "Create a grave-robbing thrall network." 
+      },
+      { 
+        name: "Trap Wraiths", 
+        baseTime: 10, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Refine Etherium"], 
+        requires: ["Establish Thralls"], 
+        cost: { mana: 15, souls: 1 }, 
+        description: "Cage wraiths for their essence." 
+      },
+      { 
+        name: "Refine Etherium", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Blood Harvest"], 
+        requires: ["Trap Wraiths"], 
+        cost: { mana: 20, souls: 2, essence: 3 }, 
+        description: "Distill wraith essence into Etherium." 
+      },
+      { 
+        name: "Blood Harvest", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Build Ebony Citadel"], 
+        requires: ["Refine Etherium"], 
+        cost: { mana: 25, souls: 5 }, 
+        description: "Sacrifice bandits for a Phylactery Core.", 
+        resourceMaxIncrease: { souls: 10, essence: 10 } 
+      },
+      // Stage 5: Power Base
+      { 
+        name: "Build Ebony Citadel", 
+        baseTime: 16, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Create Soul Wards"], 
+        requires: ["Blood Harvest", "Seize Fissure"], 
+        cost: { mana: 35, bones: 5, relics: 2 }, 
+        description: "Construct the Ebony Citadel.", 
+        resourceMaxIncrease: { bones: 10, bodies: 5 } 
+      },
+      { 
+        name: "Create Soul Wards", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Spread Choir of Silence"], 
+        requires: ["Build Ebony Citadel"], 
+        cost: { mana: 20, souls: 2, essence: 2 }, 
+        description: "Ward the citadel against divination." 
+      },
+      { 
+        name: "Plant Puppet Lords", 
+        baseTime: 14, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Spread Choir of Silence"], 
+        requires: ["Build Ebony Citadel"], 
+        cost: { mana: 25, bodies: 2, souls: 1 }, 
+        description: "Infiltrate kingdoms with Puppet Lords." 
+      },
+      { 
+        name: "Spread Choir of Silence", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Counter Crusade"], 
+        requires: ["Create Soul Wards", "Plant Puppet Lords"], 
+        cost: { mana: 30, knowledge: 10 }, 
+        description: "Recruit nobles to the Choir of Silence." 
+      },
+      // Stage 6: Confrontation
+      { 
+        name: "Counter Crusade", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Cast Scream of Níðhöggr"], 
+        requires: ["Spread Choir of Silence"], 
+        cost: { mana: 30, souls: 3 }, 
+        description: "Defend against paladins and clerics." 
+      },
+      { 
+        name: "Cast Scream of Níðhöggr", 
+        baseTime: 16, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Rig Soulfire Mines"], 
+        requires: ["Counter Crusade"], 
+        cost: { mana: 35, souls: 3, essence: 3 }, 
+        description: "Blot out the sun to nullify divine magic." 
+      },
+      { 
+        name: "Rig Soulfire Mines", 
+        baseTime: 14, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Deploy Dracolich"], 
+        requires: ["Cast Scream of Níðhöggr"], 
+        cost: { mana: 25, souls: 2, relics: 1 }, 
+        description: "Set Soulfire Mines to decimate enemies." 
+      },
+      { 
+        name: "Deploy Dracolich", 
+        baseTime: 18, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Resurrect Paladins"], 
+        requires: ["Rig Soulfire Mines"], 
+        cost: { mana: 40, bones: 10, souls: 3, relics: 2 }, 
+        description: "Unleash the Dracolich to crush survivors." 
+      },
+      { 
+        name: "Resurrect Paladins", 
+        baseTime: 15, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Send Cursed Head"], 
+        requires: ["Deploy Dracolich"], 
+        cost: { mana: 30, bodies: 3, souls: 2 }, 
+        description: "Turn paladins into Penitent Wraiths." 
+      },
+      { 
+        name: "Send Cursed Head", 
+        baseTime: 12, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Carve Phylactery"], 
+        requires: ["Resurrect Paladins"], 
+        cost: { mana: 25, bodies: 1, souls: 1 }, 
+        description: "Send the crusade leader’s cursed head." 
+      },
+      // Stage 7: Ascension
+      { 
+        name: "Carve Phylactery", 
+        baseTime: 18, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Perform Eclipse Oath"], 
+        requires: ["Send Cursed Head"], 
+        cost: { mana: 40, bodies: 1, souls: 3, essence: 5 }, 
+        description: "Embed your heart in a friend’s skull." 
+      },
+      { 
+        name: "Perform Eclipse Oath", 
+        baseTime: 20, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Sacrifice Choir"], 
+        requires: ["Carve Phylactery"], 
+        cost: { mana: 50, souls: 5, relics: 3 }, 
+        description: "Chant the Eclipse Oath to sever mortality." 
+      },
+      { 
+        name: "Sacrifice Choir", 
+        baseTime: 20, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Emerge as Vespertine"], 
+        requires: ["Perform Eclipse Oath"], 
+        cost: { mana: 60, souls: 10, essence: 5 }, 
+        description: "Slaughter the Choir for your transformation." 
+      },
+      { 
+        name: "Emerge as Vespertine", 
+        baseTime: 18, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Unleash Cataclysm"], 
+        requires: ["Sacrifice Choir"], 
+        cost: { mana: 50, souls: 5 }, 
+        description: "Rise as Vespertine, cloaked in entropy.", 
+        resourceMaxIncrease: { souls: 10 } 
+      },
+      // Stage 8: Dominion
+      { 
+        name: "Unleash Cataclysm", 
+        baseTime: 20, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Build Umbra’s Spire"], 
+        requires: ["Emerge as Vespertine"], 
+        cost: { mana: 60, souls: 10, essence: 5 }, 
+        description: "Transform kingdoms into the Deadlands." 
+      },
+      { 
+        name: "Build Umbra’s Spire", 
+        baseTime: 20, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Create Soul Engine"], 
+        requires: ["Unleash Cataclysm"], 
+        cost: { mana: 70, bones: 15, souls: 5, relics: 3 }, 
+        description: "Erect Umbra’s Spire with demigod power." 
+      },
+      { 
+        name: "Create Soul Engine", 
+        baseTime: 20, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        unlocks: ["Invade Astral Plane"], 
+        requires: ["Build Umbra’s Spire"], 
+        cost: { mana: 80, souls: 15, essence: 5 }, 
+        description: "Build a machine to harvest souls." 
+      },
+      { 
+        name: "Invade Astral Plane", 
+        baseTime: 20, 
+        proficiency: 0, 
+        isActive: false, 
+        completed: false, 
+        requires: ["Create Soul Engine"], 
+        cost: { mana: 100, knowledge: 20, souls: 20, relics: 5 }, 
+        description: "Conquer the afterlife for your hellscape.", 
+        resourceMaxIncrease: { mana: 50, knowledge: 25, souls: 10, essence: 10, relics: 5 } 
+      }
+    ];
+    let loopCount = 1;
+    let timeLeft = 60;
+    let currentTask = null;
+    let taskProgress = 0;
+    let statusMessage = "Begin your path to eternal dominion!";
+    let buttons = [];
+    let taskStartTime = 0;
+    let logMessages = [];
+    let lastSaveTime = 0;
+
+    function setup() {
+      noCanvas();
+      loadGame();
+      renderTaskList();
+      renderUpgradeList();
+      updateResourcesDisplay();
+      setupOptionsModal();
+    }
+
+    function draw() {
+      if (currentTask !== null && frameCount % 60 === 0) {
+        timeLeft--;
+        updateTimeDisplay();
+        if (timeLeft <= 0) {
+          endLoop();
+        }
+      }
+      if (currentTask !== null) {
+        taskProgress += 1 / 60;
+        let task = tasks[currentTask];
+        let progressPercent = (taskProgress / getTaskTime(task)) * 100;
+        let progressBar = document.getElementById(`progress-${currentTask}`);
+        if (progressBar) progressBar.style.width = `${progressPercent}%`;
+        if (taskProgress >= getTaskTime(task)) {
+          completeTask();
+        }
+      }
+      if (frameCount % 600 === 0) { // Every 10 seconds
+        saveGame();
+      }
+      updateStatus();
+    }
+
+    function saveGame() {
+      const gameState = {
+        resources,
+        upgrades,
+        tasks,
+        loopCount,
+        timeLeft,
+        currentTask,
+        taskProgress,
+        logMessages,
+        statusMessage,
+        taskStartTime
+      };
+      localStorage.setItem('necromancerGame', JSON.stringify(gameState));
+      lastSaveTime = frameCount / 60;
+    }
+
+    function loadGame() {
+      const savedGame = localStorage.getItem('necromancerGame');
+      if (savedGame) {
+        const gameState = JSON.parse(savedGame);
+        resources = gameState.resources;
+        upgrades = gameState.upgrades;
+        tasks = gameState.tasks;
+        loopCount = gameState.loopCount;
+        timeLeft = gameState.timeLeft;
+        currentTask = gameState.currentTask;
+        taskProgress = gameState.taskProgress;
+        logMessages = gameState.logMessages;
+        statusMessage = gameState.statusMessage;
+        taskStartTime = gameState.taskStartTime;
+        updateLoopDisplay();
+        updateTimeDisplay();
+        updateLog();
+      }
+    }
+
+    function setupOptionsModal() {
+      const modal = document.getElementById('options-modal');
+      const cogButton = document.getElementById('cog-button');
+      const closeButton = document.getElementById('close-modal');
+      const exportButton = document.getElementById('export-save');
+      const importInput = document.getElementById('import-save');
+      const wipeButton = document.getElementById('wipe-save');
+
+      cogButton.addEventListener('click', () => {
+        modal.style.display = 'flex';
+      });
+
+      closeButton.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+
+      exportButton.addEventListener('click', () => {
+        const gameState = {
+          resources,
+          upgrades,
+          tasks,
+          loopCount,
+          timeLeft,
+          currentTask,
+          taskProgress,
+          logMessages,
+          statusMessage,
+          taskStartTime
+        };
+        const blob = new Blob([JSON.stringify(gameState, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'savegame.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      importInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const gameState = JSON.parse(event.target.result);
+              resources = gameState.resources;
+              upgrades = gameState.upgrades;
+              tasks = gameState.tasks;
+              loopCount = gameState.loopCount;
+              timeLeft = gameState.timeLeft;
+              currentTask = gameState.currentTask;
+              taskProgress = gameState.taskProgress;
+              logMessages = gameState.logMessages;
+              statusMessage = gameState.statusMessage;
+              taskStartTime = gameState.taskStartTime;
+              saveGame();
+              renderTaskList();
+              renderUpgradeList();
+              updateResourcesDisplay();
+              updateLoopDisplay();
+              updateTimeDisplay();
+              updateLog();
+              modal.style.display = 'none';
+            } catch (error) {
+              alert('Invalid save file!');
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+
+      wipeButton.addEventListener('click', () => {
+        if (confirm('Are you sure you want to wipe your save?')) {
+          localStorage.removeItem('necromancerGame');
+          location.reload();
+        }
+      });
+    }
+
+    function renderTaskList() {
+      let taskList = document.getElementById("task-list");
+      let repeatableTaskList = document.getElementById("repeatable-task-list");
+      taskList.innerHTML = "<h3>Story Tasks</h3>";
+      repeatableTaskList.innerHTML = "<h3>Resource Tasks</h3>";
+      buttons = [];
+      tasks.forEach((task, index) => {
+        if (!task.unlocked && task.unlockTask) {
+          task.unlocked = tasks.some(t => t.name === task.unlockTask && t.completed);
+        }
+        let isVisible = task.repeatable ? 
+          (task.unlocked || !task.unlockTask) : 
+          (!task.completed && (!task.requires || task.requires.every(req => 
+            tasks.find(t => t.name === req).completed
+          )));
+        if (isVisible) {
+          let isLocked = task.requires && !task.requires.every(req => 
+            tasks.find(t => t.name === req).completed
+          );
+          let hasResources = checkResources(task);
+          let card = document.createElement("div");
+          card.className = `task-card ${isLocked || !hasResources ? "locked" : ""} ${task.repeatable ? "repeatable" : ""}`;
+          let costText = task.cost ? `Cost: ${Object.entries(task.cost).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
+          let yieldsText = task.yields ? `Yields: ${Object.entries(task.yields).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
+          card.innerHTML = `
+            <div class="task-name">${task.name}</div>
+            <div>${task.description}</div>
+            ${task.repeatable ? "" : `<div>Proficiency: ${task.proficiency}</div>`}
+            ${costText ? `<div>${costText}</div>` : ""}
+            ${yieldsText ? `<div>${yieldsText}</div>` : ""}
+            <div class="progress-bar"><div class="progress" id="progress-${index}"></div></div>
+          `;
+          if (!isLocked && hasResources && (task.unlocked || !task.unlockTask)) {
+            let btn = createButton(`Start ${task.name}`);
+            btn.elt.style.marginTop = "5px";
+            btn.elt.id = `button-${index}`;
+            btn.mousePressed(() => startTask(index));
+            btn.parent(card);
+            buttons[index] = btn;
+          } else {
+            let lockReason = isLocked ? `Requires: ${task.requires.join(", ")}` : 
+                           !task.unlocked ? `Locked: Complete ${task.unlockTask}` : 
+                           `Insufficient resources: ${costText}`;
+            card.innerHTML += `<div>${lockReason}</div>`;
+          }
+          if (task.repeatable) {
+            repeatableTaskList.appendChild(card);
+          } else {
+            taskList.appendChild(card);
+          }
+        }
+      });
+      updateButtons();
+    }
+
+    function renderUpgradeList() {
+      let upgradePanel = document.getElementById("upgrade-panel");
+      upgradePanel.innerHTML = "<h3>Upgrades</h3>";
+      Object.entries(upgrades).forEach(([key, upgrade]) => {
+        if (!upgrade.unlocked) {
+          upgrade.unlocked = tasks.some(t => t.name === upgrade.unlockTask && t.completed);
+        }
+        if (upgrade.unlocked) {
+          let canAfford = checkResources({ cost: upgrade.cost });
+          let isMaxed = upgrade.level >= upgrade.maxLevel;
+          let card = document.createElement("div");
+          card.className = `upgrade-card ${!canAfford || isMaxed ? "locked" : ""}`;
+          let costText = `Cost: ${Object.entries(upgrade.cost).map(([k, v]) => `${k}: ${v}`).join(", ")}`;
+          card.innerHTML = `
+            <div class="upgrade-name">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
+            <div>${upgrade.description}</div>
+            <div>Level: ${upgrade.level}/${upgrade.maxLevel}</div>
+            <div>${costText}</div>
+          `;
+          if (!isMaxed && canAfford) {
+            let btn = createButton("Buy");
+            btn.elt.style.marginTop = "5px";
+            btn.mousePressed(() => purchaseUpgrade(key));
+            btn.parent(card);
+          } else {
+            card.innerHTML += `<div>${isMaxed ? "Max level reached" : "Insufficient resources"}</div>`;
+          }
+          upgradePanel.appendChild(card);
+        }
+      });
+    }
+
+    function startTask(index) {
+      if (currentTask === null && (!tasks[index].completed || tasks[index].repeatable)) {
+        let task = tasks[index];
+        let isLocked = task.requires && !task.requires.every(req => 
+          tasks.find(t => t.name === req).completed
+        );
+        let hasResources = checkResources(task);
+        if (!isLocked && hasResources && (task.unlocked || !task.unlockTask)) {
+          task.isActive = true;
+          currentTask = index;
+          taskProgress = 0;
+          taskStartTime = frameCount / 60;
+          statusMessage = `Performing ${task.name}...`;
+          if (task.cost) {
+            for (let [resource, amount] of Object.entries(task.cost)) {
+              resources[resource].value -= amount;
+            }
+            updateResourcesDisplay();
+          }
+          updateButtons();
+          renderTaskList();
+          saveGame();
+        }
+      }
+    }
+
+    function completeTask() {
+      let task = tasks[currentTask];
+      let completionTime = (frameCount / 60 - taskStartTime).toFixed(2);
+      task.proficiency++;
+      task.isActive = false;
+      if (!task.repeatable) {
+        task.completed = true;
+        if (task.resourceMaxIncrease) {
+          for (let [resource, amount] of Object.entries(task.resourceMaxIncrease)) {
+            resources[resource].max += amount;
+          }
+          updateResourcesDisplay();
+        }
+      }
+      if (task.yields) {
+        for (let [resource, amount] of Object.entries(task.yields)) {
+          let adjustedAmount = amount;
+          if (resource === "knowledge" && upgrades.knowledgeBoost.level > 0) {
+            adjustedAmount += upgrades.knowledgeBoost.level;
+          } else if (resource === "bones" && upgrades.boneCollector.level > 0) {
+            adjustedAmount += upgrades.boneCollector.level;
+          } else if (resource === "souls" && upgrades.soulHarvester.level > 0) {
+            adjustedAmount += upgrades.soulHarvester.level;
+          } else if (resource === "essence" && upgrades.essenceAmplifier.level > 0) {
+            adjustedAmount += upgrades.essenceAmplifier.level;
+          } else if (resource === "relics" && upgrades.relicMastery.level > 0) {
+            adjustedAmount += upgrades.relicMastery.level;
+          }
+          resources[resource].value = Math.min(
+            resources[resource].value + adjustedAmount,
+            resources[resource].max
+          );
+          resources[resource].unlocked = true;
+        }
+        updateResourcesDisplay();
+      }
+      statusMessage = `${task.name} completed!`;
+      logMessages.unshift(`${task.name} completed in ${completionTime}s`);
+      if (logMessages.length > 5) logMessages.pop();
+      updateLog();
+      currentTask = null;
+      taskProgress = 0;
+      renderTaskList();
+      renderUpgradeList();
+      saveGame();
+      if (tasks.filter(t => !t.repeatable).every(t => t.completed)) {
+        statusMessage = "Vespertine reigns! Choose your path to eternal dominion.";
+      }
+    }
+
+    function purchaseUpgrade(key) {
+      let upgrade = upgrades[key];
+      if (upgrade.level < upgrade.maxLevel && checkResources({ cost: upgrade.cost })) {
+        for (let [resource, amount] of Object.entries(upgrade.cost)) {
+          resources[resource].value -= amount;
+        }
+        upgrade.level++;
+        if (key === "resourceVault") {
+          for (let resource in resources) {
+            resources[resource].max *= (1 + 0.2);
+          }
+        }
+        statusMessage = `${key.replace(/([A-Z])/g, ' $1').trim()} upgraded to level ${upgrade.level}!`;
+        logMessages.unshift(statusMessage);
+        if (logMessages.length > 5) logMessages.pop();
+        updateLog();
+        updateResourcesDisplay();
+        renderUpgradeList();
+        renderTaskList();
+        saveGame();
+      }
+    }
+
+    function checkResources(task) {
+      if (!task.cost) return true;
+      let adjustedCost = {};
+      for (let [resource, amount] of Object.entries(task.cost)) {
+        let cost = amount;
+        if (resource === "mana" && upgrades.manaEfficiency.level > 0) {
+          cost *= (1 - 0.1 * upgrades.manaEfficiency.level);
+        }
+        if (upgrades.nihilisticResolve.level > 0) {
+          cost *= (1 - 0.05 * upgrades.nihilisticResolve.level);
+        }
+        if ((resource === "essence" || resource === "relics") && upgrades.ritualPrecision.level > 0) {
+          cost *= (1 - 0.1 * upgrades.ritualPrecision.level);
+        }
+        adjustedCost[resource] = cost;
+      }
+      return Object.entries(adjustedCost).every(([resource, amount]) => resources[resource].value >= Math.ceil(amount));
+    }
+
+    function getTaskTime(task) {
+      let time = task.baseTime * (1 - task.proficiency * 0.1);
+      if (upgrades.swiftRituals.level > 0) {
+        time *= (1 - 0.1 * upgrades.swiftRituals.level);
+      }
+      if (upgrades.crowFamiliar.level > 0) {
+        time *= (1 - 0.05 * upgrades.crowFamiliar.level);
+      }
+      return Math.max(1, time);
+    }
+
+    function endLoop() {
+      loopCount++;
+      timeLeft = 60;
+      currentTask = null;
+      taskProgress = 0;
+      for (let task of tasks) {
+        task.isActive = false;
+        if (!task.repeatable) {
+          task.completed = false;
+        }
+      }
+      for (let key in upgrades) {
+        upgrades[key].level = 0;
+      }
+      statusMessage = "Discovered! Time loop resets with greater mastery.";
+      logMessages.unshift(`Cycle ${loopCount - 1} ended. Loop reset.`);
+      if (logMessages.length > 5) logMessages.pop();
+      updateLog();
+      updateLoopDisplay();
+      updateTimeDisplay();
+      renderTaskList();
+      renderUpgradeList();
+      saveGame();
+    }
+
+    function updateLoopDisplay() {
+      document.getElementById("loop").innerText = `Cycle: ${loopCount}`;
+    }
+
+    function updateTimeDisplay() {
+      document.getElementById("time").innerText = `Discovery in: ${timeLeft}s`;
+      document.getElementById("time-progress").style.width = `${(timeLeft / 60) * 100}%`;
+    }
+
+    function updateStatus() {
+      document.getElementById("status").innerText = statusMessage;
+    }
+
+    function updateLog() {
+      document.getElementById("log").innerHTML = logMessages.join("<br>");
+    }
+
+    function updateResourcesDisplay() {
+      document.getElementById("resources").innerHTML = Object.entries(resources)
+        .filter(([key, resource]) => resource.unlocked)
+        .map(([key, { value, max }]) => 
+          `<div class="resource-item">${key.charAt(0).toUpperCase() + key.slice(1)}: <span>${Math.floor(value)}/${Math.floor(max)}</span></div>`
+        ).join("");
+    }
+
+    function updateButtons() {
+      tasks.forEach((task, index) => {
+        let btn = buttons[index];
+        if (btn) {
+          if (task.completed && !task.repeatable) {
+            btn.attribute("disabled", true);
+            btn.html(`${task.name} (Done)`);
+          } else {
+            let isLocked = task.requires && !task.requires.every(req => 
+              tasks.find(t => t.name === req).completed
+            );
+            let hasResources = checkResources(task);
+            if (isLocked || !hasResources || !task.unlocked) {
+              btn.attribute("disabled", true);
+              btn.html(`Start ${task.name}`);
+            } else {
+              btn.removeAttribute("disabled");
+              btn.html(`Start ${task.name}`);
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
