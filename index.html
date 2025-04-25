@@ -298,7 +298,7 @@
       knowledgeBoost: { 
         level: 0, maxLevel: 3, cost: { knowledge: 15 }, 
         description: "Increase Knowledge yield by 1 per level.", 
-        unlocked: false, upgradeTask: "Access Black Archives" 
+        unlocked: false, unlockTask: "Access Black Archives" 
       },
       boneCollector: { 
         level: 0, maxLevel: 3, cost: { bones: 10, mana: 15 }, 
@@ -1347,8 +1347,12 @@
         if (task.resourceMaxIncrease) {
           for (let [resource, amount] of Object.entries(task.resourceMaxIncrease)) {
             resources[resource].max += amount;
+            resources[resource].unlocked = true;
           }
-          updateResourcesDisplay();
+        }
+        if (task.name === "Survive Plague") {
+          resources.knowledge.unlocked = true;
+          resources.knowledge.value = Math.min(resources.knowledge.value + 3, resources.knowledge.max);
         }
       }
       if (task.yields) {
@@ -1373,6 +1377,9 @@
         }
         updateResourcesDisplay();
       }
+      tasks.forEach(t => {
+        if (t.unlockTask === task.name) t.unlocked = true;
+      });
       statusMessage = `${task.name} completed!`;
       logMessages.unshift(`${task.name} completed in ${completionTime}s`);
       if (logMessages.length > 10) logMessages.pop();
