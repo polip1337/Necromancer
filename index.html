@@ -611,7 +611,7 @@
           completeTask();
         }
       }
-      if (resources.notoriety.value >= 100) {
+      if (resources.notoriety && resources.notoriety.value >= 100) {
         endLoop();
       }
       if (frameCount % 600 === 0) { // Every 10 seconds
@@ -643,15 +643,27 @@
       const savedGame = localStorage.getItem('necromancerGame');
       if (savedGame) {
         const gameState = JSON.parse(savedGame);
-        resources = gameState.resources;
-        upgrades = gameState.upgrades;
-        tasks = gameState.tasks;
-        loopCount = gameState.loopCount;
-        currentTask = gameState.currentTask;
-        taskProgress = gameState.taskProgress;
-        logMessages = gameState.logMessages;
-        statusMessage = gameState.statusMessage;
-        taskStartTime = gameState.taskStartTime;
+        // Merge saved resources with default to ensure notoriety exists
+        resources = {
+          mana: { value: 0, max: 100, unlocked: true },
+          knowledge: { value: 0, max: 50, unlocked: false },
+          notoriety: { value: 0, max: 100, unlocked: true }
+        };
+        if (gameState.resources) {
+          for (let key in gameState.resources) {
+            if (resources[key]) {
+              resources[key] = { ...resources[key], ...gameState.resources[key] };
+            }
+          }
+        }
+        upgrades = gameState.upgrades || upgrades;
+        tasks = gameState.tasks || tasks;
+        loopCount = gameState.loopCount || 1;
+        currentTask = gameState.currentTask || null;
+        taskProgress = gameState.taskProgress || 0;
+        logMessages = gameState.logMessages || [];
+        statusMessage = gameState.statusMessage || "Begin your path to eternal dominion!";
+        taskStartTime = gameState.taskStartTime || 0;
         updateLoopDisplay();
         updateNotorietyDisplay();
         updateLog();
@@ -737,7 +749,17 @@
                   !gameState.statusMessage || !gameState.taskStartTime) {
                 throw new Error('Invalid save file structure');
               }
-              resources = gameState.resources;
+              // Merge saved resources with default
+              resources = {
+                mana: { value: 0, max: 100, unlocked: true },
+                knowledge: { value: 0, max: 50, unlocked: false },
+                notoriety: { value: 0, max: 100, unlocked: true }
+              };
+              for (let key in gameState.resources) {
+                if (resources[key]) {
+                  resources[key] = { ...resources[key], ...gameState.resources[key] };
+                }
+              }
               upgrades = gameState.upgrades;
               tasks = gameState.tasks;
               loopCount = gameState.loopCount;
@@ -1054,8 +1076,10 @@
     }
 
     function updateNotorietyDisplay() {
-      document.getElementById("notoriety").innerText = `Notoriety: ${Math.floor(resources.notoriety.value)}/100`;
-      document.getElementById("notoriety-progress").style.width = `${Math.max(0, Math.min(100, (resources.notoriety.value / 100) * 100))}%`;
+      if (resources.notoriety) {
+        document.getElementById("notoriety").innerText = `Notoriety: ${Math.floor(resources.notoriety.value)}/100`;
+        document.getElementById("notoriety-progress").style.width = `${Math.max(0, Math.min(100, (resources.notoriety.value / 100) * 100))}%`;
+      }
     }
 
     function updateStatus() {
