@@ -8,8 +8,8 @@
 </head>
 <body>
   <div id="container">
-    <div id="cog-button">⚙️</div>
     <div id="resource-panel">
+      <div id="cog-button">⚙️</div>
       <h3>Resources</h3>
       <div id="resources"></div>
     </div>
@@ -163,10 +163,15 @@
         }
         upgrades = gameState.upgrades || upgrades;
         tasks = gameState.tasks || tasks;
-        // Ensure all repeatable tasks have autoRepeat property
+        // Ensure all repeatable tasks have autoRepeat and minimized properties
         tasks.forEach(task => {
-          if (task.repeatable && task.autoRepeat === undefined) {
-            task.autoRepeat = false;
+          if (task.repeatable) {
+            if (task.autoRepeat === undefined) {
+              task.autoRepeat = false;
+            }
+            if (task.minimized === undefined) {
+              task.minimized = false;
+            }
           }
         });
         loopCount = gameState.loopCount || 1;
@@ -358,7 +363,12 @@
           let hasResources = checkResources(task);
           let hasCompletions = !task.maxCompletions || task.completionsThisLoop < task.maxCompletions;
           let card = document.createElement("div");
-          card.className = `task-card ${isLocked ? "locked" : ""} ${task.repeatable ? "repeatable" : ""} ${task.safe ? "safe" : ""}`;
+          let cardClasses = `task-card ${isLocked ? "locked" : ""} ${task.repeatable ? "repeatable" : ""} ${task.safe ? "safe" : ""}`;
+          // Only apply minimized class to repeatable tasks
+          if (task.repeatable && task.minimized) {
+            cardClasses += " minimized";
+          }
+          card.className = cardClasses;
           let adjustedCost = task.cost ? Object.entries(task.cost).reduce((acc, [k, v]) => {
             let cost = v;
             if (k === "mana" && upgrades.manaEfficiency.level > 0) {
@@ -387,6 +397,7 @@
             estimatedTimeText = `<div>Time: ~${estimatedTime.toFixed(1)}s</div>`;
           }
           let autoRepeatToggle = "";
+          let minimizeButton = "";
           if (task.repeatable) {
             autoRepeatToggle = `
               <div class="auto-repeat-toggle">
@@ -396,28 +407,44 @@
                 </label>
               </div>
             `;
+            let minimizeSymbol = task.minimized ? "+" : "−";
+            minimizeButton = `<button class="minimize-button" data-task-index="${index}">${minimizeSymbol}</button>`;
           }
+          let taskContent = `
+            <div class="task-content">
+              <div>${task.description}</div>
+              ${proficiencyText}
+              ${estimatedTimeText}
+              ${costText ? `<div>${costText}</div>` : ""}
+              ${yieldsText ? `<div>${yieldsText}</div>` : ""}
+              ${notorietyText ? `<div>${notorietyText}</div>` : ""}
+              ${task.maxCompletions ? `<div>Uses left: ${task.maxCompletions - task.completionsThisLoop}/${task.maxCompletions}</div>` : ""}
+              ${autoRepeatToggle}
+              <div class="progress-bar"><div class="progress" id="progress-${index}"></div></div>
+            </div>
+          `;
+          // For story tasks (non-repeatable), always show content. For resource tasks, check minimized state
+          let shouldShowContent = !task.repeatable || !task.minimized;
           card.innerHTML = `
-            <div class="task-name">${task.name}</div>
-            <div>${task.description}</div>
-            ${proficiencyText}
-            ${estimatedTimeText}
-            ${costText ? `<div>${costText}</div>` : ""}
-            ${yieldsText ? `<div>${yieldsText}</div>` : ""}
-            ${notorietyText ? `<div>${notorietyText}</div>` : ""}
-            ${task.maxCompletions ? `<div>Uses left: ${task.maxCompletions - task.completionsThisLoop}/${task.maxCompletions}</div>` : ""}
-            ${autoRepeatToggle}
-            <div class="progress-bar"><div class="progress" id="progress-${index}"></div></div>
+            <div class="task-header">
+              <div class="task-name">${task.name}</div>
+              ${minimizeButton}
+            </div>
+            ${shouldShowContent ? taskContent : ""}
           `;
           if (!isLocked && (task.unlocked || !task.unlockTask) && hasCompletions) {
-            let btn = createButton(`Start ${task.name}`);
-            btn.elt.style.marginTop = "8px";
-            btn.elt.id = `button-${index}`;
-            btn.elt.disabled = !hasResources || currentTask !== null || !hasCompletions;
-            btn.mousePressed(() => startTask(index));
-            btn.parent(card);
+            // Only show start button if task is not minimized (only applies to repeatable tasks)
+            let shouldShowButton = !task.repeatable || !task.minimized;
+            if (shouldShowButton) {
+              let btn = createButton(`Start ${task.name}`);
+              btn.elt.style.marginTop = "8px";
+              btn.elt.id = `button-${index}`;
+              btn.elt.disabled = !hasResources || currentTask !== null || !hasCompletions;
+              btn.mousePressed(() => startTask(index));
+              btn.parent(card);
+            }
             
-            // Add event listener for auto-repeat toggle
+            // Add event listener for auto-repeat toggle (only for repeatable tasks)
             if (task.repeatable) {
               let checkbox = card.querySelector('.auto-repeat-checkbox');
               if (checkbox) {
@@ -426,18 +453,45 @@
                   saveGame();
                 });
               }
+              
+              // Add event listener for minimize button (only for repeatable tasks)
+              let minimizeBtn = card.querySelector('.minimize-button');
+              if (minimizeBtn) {
+                minimizeBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  // Only toggle minimized state for repeatable tasks
+                  if (tasks[index].repeatable) {
+                    tasks[index].minimized = !tasks[index].minimized;
+                    renderTaskList();
+                    saveGame();
+                  }
+                });
+              }
             }
             
-            if (!hasResources) {
-              card.innerHTML += `<div>Insufficient resources: ${costText}</div>`;
+            // Add resource/completion warnings only if content is visible
+            if (shouldShowContent) {
+              if (!hasResources) {
+                let contentDiv = card.querySelector('.task-content');
+                if (contentDiv) {
+                  contentDiv.innerHTML += `<div>Insufficient resources: ${costText}</div>`;
+                }
+              }
+              if (!hasCompletions) {
+                let contentDiv = card.querySelector('.task-content');
+                if (contentDiv) {
+                  contentDiv.innerHTML += `<div>No uses left this cycle</div>`;
+                }
+              }
             }
-            if (!hasCompletions) {
-              card.innerHTML += `<div>No uses left this cycle</div>`;
-            }
+            
+            // Update progress bar if task is active
             if (currentTask === index) {
-              let progressPercent = (taskProgress / getTaskTime(task)) * 100;
               let progressBar = document.getElementById(`progress-${index}`);
-              if (progressBar) progressBar.style.width = `${progressPercent}%`;
+              if (progressBar) {
+                let progressPercent = (taskProgress / getTaskTime(task)) * 100;
+                progressBar.style.width = `${progressPercent}%`;
+              }
             }
           } else {
             let lockReason = isLocked ? `Requires: ${task.requires.join(", ")}` : 
