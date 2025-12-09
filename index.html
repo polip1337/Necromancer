@@ -21,7 +21,11 @@
         <div id="notoriety-bar"><div id="notoriety-progress"></div></div>
         <p id="status">Begin your path to eternal dominion!</p>
       </div>
-      <div id="board">
+      <div id="tabs">
+        <button id="tab-tasks" class="tab-button active">Tasks</button>
+        <button id="tab-paths" class="tab-button">Paths & History</button>
+      </div>
+      <div id="board" class="tab-panel active">
         <div id="task-list">
           <h3>Story Tasks</h3>
         </div>
@@ -31,6 +35,10 @@
         <div id="upgrade-panel">
           <h3>Upgrades</h3>
         </div>
+      </div>
+      <div id="path-panel" class="tab-panel">
+        <h3>Path History</h3>
+        <div id="path-history"></div>
       </div>
       <div id="log"></div>
     </div>
@@ -86,6 +94,12 @@
       showEstimatedTime: true,
       notorietyTaskMode: false
     };
+    let pathLog = {
+      completions: {},
+      choiceSelections: {},
+      automation: {}
+    };
+    const baseResources = JSON.parse(JSON.stringify(resources));
 
     function setup() {
       noCanvas();
@@ -93,8 +107,10 @@
       loadSettings();
       renderTaskList();
       renderUpgradeList();
+      renderPathLog();
       updateResourcesDisplay();
       setupOptionsModal();
+      setupTabs();
     }
 
     function draw() {
@@ -125,6 +141,7 @@
       updateButtons();
       updateLog();
       updateStatus();
+      checkStoryAutomation();
     }
 
     function saveGame() {
@@ -138,7 +155,8 @@
         logMessages,
         statusMessage,
         taskStartTime,
-        settings
+        settings,
+        pathLog
       };
       localStorage.setItem('necromancerGame', JSON.stringify(gameState));
       lastSaveTime = frameCount / 60;
@@ -148,21 +166,24 @@
       const savedGame = localStorage.getItem('necromancerGame');
       if (savedGame) {
         const gameState = JSON.parse(savedGame);
-        // Merge saved resources with default to ensure notoriety exists
-        resources = {
-          mana: { value: 0, max: 100, unlocked: true },
-          knowledge: { value: 0, max: 50, unlocked: false },
-          notoriety: { value: 0, max: 100, unlocked: true }
-        };
+        // Merge saved resources with default to ensure all exist
+        resources = JSON.parse(JSON.stringify(baseResources));
         if (gameState.resources) {
           for (let key in gameState.resources) {
             if (resources[key]) {
               resources[key] = { ...resources[key], ...gameState.resources[key] };
+            } else {
+              resources[key] = gameState.resources[key];
             }
           }
         }
         upgrades = gameState.upgrades || upgrades;
         tasks = gameState.tasks || tasks;
+        pathLog = gameState.pathLog || pathLog;
+        // ensure pathLog sub-objects exist
+        pathLog.completions = pathLog.completions || {};
+        pathLog.choiceSelections = pathLog.choiceSelections || {};
+        pathLog.automation = pathLog.automation || {};
         // Ensure all repeatable tasks have autoRepeat and minimized properties
         tasks.forEach(task => {
           if (task.repeatable) {
@@ -173,6 +194,8 @@
               task.minimized = false;
             }
           }
+          if (task.completionsThisLoop === undefined) task.completionsThisLoop = 0;
+          if (task.completionsTotal === undefined) task.completionsTotal = pathLog.completions[task.name] || 0;
         });
         loopCount = gameState.loopCount || 1;
         currentTask = gameState.currentTask || null;
@@ -185,6 +208,17 @@
         updateNotorietyDisplay();
         updateLog();
         loadSettings();
+      }
+      else {
+        // Initialize defaults when no save exists
+        tasks.forEach(task => {
+          if (task.repeatable) {
+            if (task.autoRepeat === undefined) task.autoRepeat = false;
+            if (task.minimized === undefined) task.minimized = false;
+          }
+          task.completionsThisLoop = task.completionsThisLoop || 0;
+          task.completionsTotal = task.completionsTotal || 0;
+        });
       }
     }
 
@@ -273,7 +307,8 @@
                 logMessages,
                 statusMessage,
                 taskStartTime,
-                settings
+                settings,
+                pathLog
               };
         const blob = new Blob([JSON.stringify(gameState, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -297,14 +332,12 @@
                 throw new Error('Invalid save file structure');
               }
               // Merge saved resources with default
-              resources = {
-                mana: { value: 0, max: 100, unlocked: true },
-                knowledge: { value: 0, max: 50, unlocked: false },
-                notoriety: { value: 0, max: 100, unlocked: true }
-              };
+              resources = JSON.parse(JSON.stringify(baseResources));
               for (let key in gameState.resources) {
                 if (resources[key]) {
                   resources[key] = { ...resources[key], ...gameState.resources[key] };
+                } else {
+                  resources[key] = gameState.resources[key];
                 }
               }
               upgrades = gameState.upgrades;
@@ -316,10 +349,23 @@
               statusMessage = gameState.statusMessage;
               taskStartTime = gameState.taskStartTime;
               settings = gameState.settings || settings;
+              pathLog = gameState.pathLog || pathLog;
+              pathLog.completions = pathLog.completions || {};
+              pathLog.choiceSelections = pathLog.choiceSelections || {};
+              pathLog.automation = pathLog.automation || {};
+              tasks.forEach(task => {
+                if (task.repeatable) {
+                  if (task.autoRepeat === undefined) task.autoRepeat = false;
+                  if (task.minimized === undefined) task.minimized = false;
+                }
+                if (task.completionsThisLoop === undefined) task.completionsThisLoop = 0;
+                if (task.completionsTotal === undefined) task.completionsTotal = pathLog.completions[task.name] || 0;
+              });
               saveGame();
               loadSettings();
               renderTaskList();
               renderUpgradeList();
+              renderPathLog();
               updateResourcesDisplay();
               updateLoopDisplay();
               updateNotorietyDisplay();
@@ -339,6 +385,29 @@
           location.reload();
         }
       });
+    }
+
+    function setupTabs() {
+      const tabTasks = document.getElementById("tab-tasks");
+      const tabPaths = document.getElementById("tab-paths");
+      const board = document.getElementById("board");
+      const pathPanel = document.getElementById("path-panel");
+      const activateTab = (tabName) => {
+        if (tabName === "tasks") {
+          tabTasks.classList.add("active");
+          tabPaths.classList.remove("active");
+          board.classList.add("active");
+          pathPanel.classList.remove("active");
+        } else {
+          tabPaths.classList.add("active");
+          tabTasks.classList.remove("active");
+          pathPanel.classList.add("active");
+          board.classList.remove("active");
+          renderPathLog();
+        }
+      };
+      tabTasks.addEventListener('click', () => activateTab("tasks"));
+      tabPaths.addEventListener('click', () => activateTab("paths"));
     }
 
     function renderTaskList() {
@@ -509,6 +578,96 @@
       });
     }
 
+    function renderPathLog() {
+      const panel = document.getElementById("path-history");
+      if (!panel) return;
+      panel.innerHTML = "";
+      const grouped = {};
+      tasks.forEach(task => {
+        if (task.choiceGroup) {
+          if (!grouped[task.choiceGroup]) grouped[task.choiceGroup] = [];
+          grouped[task.choiceGroup].push(task);
+        }
+      });
+      Object.entries(grouped).forEach(([group, groupTasks]) => {
+        // Determine parent selection constraint
+        const parentGroup = groupTasks[0].choiceParentGroup;
+        const parentKey = groupTasks[0].choiceParentKey;
+        if (parentGroup && pathLog.choiceSelections[parentGroup] !== parentKey) {
+          return; // hide branches of other parent choices
+        }
+        const groupDiv = document.createElement("div");
+        groupDiv.className = "path-group";
+        const header = document.createElement("div");
+        header.className = "path-group-header";
+        header.innerText = group.replace(/([A-Z])/g, ' $1').trim();
+        groupDiv.appendChild(header);
+        groupTasks.forEach(task => {
+          const count = pathLog.completions[task.name] || 0;
+          const card = document.createElement("div");
+          const pickedClass = count > 0 ? "picked" : "unpicked";
+          card.className = `path-card ${pickedClass}`;
+          card.innerHTML = `
+            <div class="path-card-title">${task.name}</div>
+            <div class="path-card-desc">${task.description}</div>
+            <div class="path-card-count">Completions: ${count}</div>
+          `;
+          const automationAvailable = count >= 5 && !task.repeatable;
+          if (automationAvailable) {
+            const toggle = document.createElement("label");
+            toggle.className = "auto-story-toggle";
+            const checked = pathLog.automation[task.name] ? "checked" : "";
+            toggle.innerHTML = `
+              <input type="checkbox" data-task-name="${task.name}" ${checked}>
+              Automate after unlock
+            `;
+            toggle.addEventListener("change", (e) => {
+              pathLog.automation[task.name] = e.target.checked;
+              saveGame();
+            });
+            card.appendChild(toggle);
+          }
+          groupDiv.appendChild(card);
+        });
+        panel.appendChild(groupDiv);
+      });
+      // Additional milestone tracking for non-choice story tasks
+      const milestoneTasks = tasks.filter(t => !t.repeatable && !t.choiceGroup);
+      if (milestoneTasks.length) {
+        const milestoneHeader = document.createElement("div");
+        milestoneHeader.className = "path-group-header";
+        milestoneHeader.innerText = "Milestones";
+        panel.appendChild(milestoneHeader);
+        milestoneTasks.forEach(task => {
+          const count = pathLog.completions[task.name] || 0;
+          const card = document.createElement("div");
+          const pickedClass = count > 0 ? "picked" : "unpicked";
+          card.className = `path-card ${pickedClass}`;
+          card.innerHTML = `
+            <div class="path-card-title">${task.name}</div>
+            <div class="path-card-desc">${task.description}</div>
+            <div class="path-card-count">Completions: ${count}</div>
+          `;
+          const automationAvailable = count >= 5;
+          if (automationAvailable) {
+            const toggle = document.createElement("label");
+            toggle.className = "auto-story-toggle";
+            const checked = pathLog.automation[task.name] ? "checked" : "";
+            toggle.innerHTML = `
+              <input type="checkbox" data-task-name="${task.name}" ${checked}>
+              Automate after unlock
+            `;
+            toggle.addEventListener("change", (e) => {
+              pathLog.automation[task.name] = e.target.checked;
+              saveGame();
+            });
+            card.appendChild(toggle);
+          }
+          panel.appendChild(card);
+        });
+      }
+    }
+
     function renderUpgradeList() {
       let upgradePanel = document.getElementById("upgrade-panel");
       upgradePanel.innerHTML = "<h3>Upgrades</h3>";
@@ -586,6 +745,11 @@
       let completionTime = (frameCount / 60 - taskStartTime).toFixed(2);
       task.proficiency++;
       task.isActive = false;
+      task.completionsTotal = (task.completionsTotal || 0) + 1;
+      pathLog.completions[task.name] = (pathLog.completions[task.name] || 0) + 1;
+      if (task.choiceGroup) {
+        pathLog.choiceSelections[task.choiceGroup] = task.choiceKey;
+      }
       if (!task.repeatable) {
         task.completed = true;
         if (task.resourceMaxIncrease) {
@@ -631,6 +795,7 @@
       taskProgress = 0;
       renderTaskList();
       renderUpgradeList();
+      renderPathLog();
       saveGame();
       if (tasks.filter(t => !t.repeatable).every(t => t.completed)) {
         statusMessage = "Knowledge amassed! Choose your path to power.";
@@ -770,6 +935,20 @@
             btn.elt.disabled = isLocked || !hasResources || !task.unlocked || isActiveTask || !hasCompletions;
             btn.html(`Start ${task.name}`);
           }
+        }
+      });
+    }
+
+    function checkStoryAutomation() {
+      if (currentTask !== null) return;
+      tasks.forEach((task, index) => {
+        if (task.repeatable) return;
+        if (!pathLog.automation[task.name]) return;
+        if (task.completed) return;
+        const requiresMet = !task.requires || task.requires.every(req => tasks.find(t => t.name === req).completed);
+        const isUnlocked = task.unlocked || !task.unlockTask || tasks.some(t => t.name === task.unlockTask && t.completed);
+        if (requiresMet && isUnlocked && checkResources(task)) {
+          startTask(index);
         }
       });
     }

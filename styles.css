@@ -25,6 +25,35 @@ body {
   position: relative;
 }
 
+#tabs {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+
+.tab-button {
+  background: linear-gradient(135deg, #1a0d1a 0%, #2d152d 100%);
+  border: 1px solid #4a1a4a;
+  color: #d4c4d4;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Cinzel', serif;
+}
+
+.tab-button.active {
+  border-color: #8a4a8a;
+  box-shadow: 0 0 8px rgba(138, 74, 138, 0.5);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
 #cog-button {
   position: absolute;
   top: 10px;
@@ -515,6 +544,54 @@ body {
   font-size: 14px;
   color: #d4c4d4;
   margin: 4px 0;
+}
+
+.path-group {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #4a1a4a;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.path-group-header {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #c8a8c8;
+}
+
+.path-card {
+  border: 1px solid #3a1a3a;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+  background: rgba(20, 10, 20, 0.5);
+}
+
+.path-card.unpicked {
+  opacity: 0.5;
+}
+
+.path-card-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.path-card-desc {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.path-card-count {
+  font-size: 12px;
+  color: #b8a0b8;
+}
+
+.auto-story-toggle {
+  font-size: 13px;
+  display: inline-block;
+  margin-top: 6px;
 }
 
 .auto-repeat-toggle {
