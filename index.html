@@ -4,246 +4,7 @@
   <meta charset="UTF-8">
   <title>Necromancer's Eternal Ascendancy</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text&display=swap');
-    body {
-      font-family: 'Crimson Text', serif;
-      background: linear-gradient(180deg, #1a0d1a 0%, #2b1a2b 100%);
-      color: #e0d0e0;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    #container {
-      display: flex;
-      width: 100%;
-      max-width: 1200px;
-      gap: 20px;
-      position: relative;
-    }
-    #cog-button {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 24px;
-      cursor: pointer;
-      background: #2a1a2a;
-      border: 1px solid #4b0082;
-      border-radius: 5px;
-      padding: 5px;
-      color: #b19cd9;
-      transition: background 0.2s, transform 0.2s;
-    }
-    #cog-button:hover {
-      background: #6a0dad;
-      transform: scale(1.1);
-    }
-    #options-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    #options-content {
-      background: #2a1a2a;
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid #4b0082;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      width: 300px;
-      text-align: center;
-      color: #e0d0e0;
-    }
-    #options-content h3 {
-      font-family: 'Cinzel', serif;
-      color: #b19cd9;
-      margin: 0 0 15px;
-    }
-    #options-content button, #options-content input {
-      display: block;
-      width: 80%;
-      margin: 10px auto;
-      padding: 8px;
-      font-family: 'Cinzel', serif;
-      font-size: 14px;
-      background: linear-gradient(90deg, #4b0082, #6a0dad);
-      color: #e0d0e0;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #options-content button:hover, #options-content input:hover {
-      background: linear-gradient(90deg, #6a0dad, #98fb98);
-    }
-    #resource-panel {
-      width: 200px;
-      background: #2a1a2a;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      border: 1px solid #4b0082;
-    }
-    #resources h3 {
-      font-family: 'Cinzel', serif;
-      color: #b19cd9;
-      margin: 0 0 10px;
-      text-align: center;
-    }
-    .resource-item {
-      font-size: 14px;
-      margin: 5px 0;
-      color: #d8bfd8;
-    }
-    .resource-item span {
-      color: #98fb98;
-    }
-    #main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    #info {
-      text-align: center;
-      background: #2a1a2a;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      border: 1px solid #4b0082;
-    }
-    #info h2 {
-      font-family: 'Cinzel', serif;
-      color: #b19cd9;
-      margin: 0 0 10px;
-    }
-    #notoriety-bar {
-      height: 10px;
-      background: #555;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 5px;
-    }
-    #notoriety-progress {
-      height: 100%;
-      background: linear-gradient(90deg, #4b0082, #98fb98);
-      transition: width 0.3s ease;
-    }
-    #board {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-    }
-    #task-list, #repeatable-task-list, #upgrade-panel {
-      width: 300px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #2a1a2a;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      border: 1px solid #4b0082;
-    }
-    #task-list h3, #repeatable-task-list h3, #upgrade-panel h3 {
-      font-family: 'Cinzel', serif;
-      color: #b19cd9;
-      margin: 0 0 10px;
-      text-align: center;
-    }
-    .task-card, .upgrade-card {
-      background: #3a1c3a;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      border: 1px solid #4b0082;
-      transition: transform 0.2s;
-    }
-    .task-card.safe {
-      background: #1a2a3a;
-      border: 1px solid #4682b4;
-    }
-    .task-card:hover, .upgrade-card:hover {
-      transform: translateY(-2px);
-    }
-    .task-card.completed {
-      background: #2a3a2a;
-      opacity: 0.7;
-    }
-    .task-card.locked {
-      background: #1a0d1a;
-      opacity: 0.5;
-    }
-    .task-card.repeatable {
-      padding: 8px;
-      font-size: 14px;
-      line-height: 1.2;
-    }
-    .task-name, .upgrade-name {
-      font-family: 'Cinzel', serif;
-      font-weight: 700;
-      color: #d8bfd8;
-      margin-bottom: 5px;
-    }
-    .task-card div, .upgrade-card div {
-      font-size: 14px;
-      color: #e0d0e0;
-    }
-    .progress-bar {
-      height: 8px;
-      background: #555;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 5px;
-    }
-    .progress {
-      height: 100%;
-      background: linear-gradient(90deg, #4b0082, #98fb98);
-      width: 0;
-      transition: width 0.3s ease;
-    }
-    button {
-      padding: 8px;
-      font-size: 14px;
-      font-family: 'Cinzel', serif;
-      cursor: pointer;
-      background: linear-gradient(90deg, #4b0082, #6a0dad);
-      color: #e0d0e0;
-      border: none;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-      transition: background 0.2s, transform 0.2s;
-    }
-    button:hover {
-      background: linear-gradient(90deg, #6a0dad, #98fb98);
-      transform: scale(1.05);
-    }
-    button:disabled {
-      background: #555;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-    #log {
-      margin-top: 20px;
-      max-height: 200px;
-      overflow-y: auto;
-      width: 100%;
-      background: #2a1a2a;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      border: 1px solid #4b0082;
-      font-size: 14px;
-      color: #d8bfd8;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="container">
@@ -277,311 +38,41 @@
   <div id="options-modal">
     <div id="options-content">
       <h3>Options</h3>
-      <button id="export-save">Export Save</button>
-      <input type="file" id="import-save" accept=".json">
-      <button id="wipe-save">Wipe Save</button>
+      <div class="options-section">
+        <div class="options-section-title">Display Settings</div>
+        <div class="option-item">
+          <label>
+            <input type="checkbox" id="show-proficiency">
+            Show Proficiency on Resource Tasks
+          </label>
+        </div>
+        <div class="option-item">
+          <label>
+            <input type="checkbox" id="show-estimated-time">
+            Show Estimated Time on Resource Tasks
+          </label>
+        </div>
+      </div>
+      <div class="options-section">
+        <div class="options-section-title">Gameplay Settings</div>
+        <div class="option-item">
+          <label>
+            <input type="checkbox" id="notoriety-task-mode">
+            Notoriety: 1/sec during Tasks Only
+          </label>
+        </div>
+      </div>
+      <div class="options-section">
+        <div class="options-section-title">Save Management</div>
+        <button id="export-save">Export Save</button>
+        <input type="file" id="import-save" accept=".json">
+        <button id="wipe-save">Wipe Save</button>
+      </div>
       <button id="close-modal">Close</button>
     </div>
   </div>
+  <script src="data.js"></script>
   <script>
-    let resources = {
-      mana: { value: 0, max: 100, unlocked: true },
-      knowledge: { value: 0, max: 50, unlocked: false },
-      notoriety: { value: 0, max: 100, unlocked: true }
-    };
-    let upgrades = {
-      manaEfficiency: { 
-        level: 0, maxLevel: 3, cost: { mana: 20, knowledge: 10 }, 
-        description: "Reduce Mana costs by 10% per level.", 
-        unlocked: false, unlockTask: "Access Black Archives" 
-      },
-      knowledgeBoost: { 
-        level: 0, maxLevel: 3, cost: { knowledge: 15 }, 
-        description: "Increase Knowledge yield by 1 per level.", 
-        unlocked: false, unlockTask: "Access Black Archives" 
-      },
-      swiftRituals: { 
-        level: 0, maxLevel: 3, cost: { mana: 25, knowledge: 15 }, 
-        description: "Reduce task times by 10% per level.", 
-        unlocked: false, unlockTask: "Decipher Soul Anchors" 
-      },
-      crowFamiliar: { 
-        level: 0, maxLevel: 3, cost: { mana: 15 }, 
-        description: "Reduce task times by 5% per level.", 
-        unlocked: false, unlockTask: "Reanimate Crow" 
-      },
-      nihilisticResolve: { 
-        level: 0, maxLevel: 3, cost: { mana: 10, knowledge: 10 }, 
-        description: "Reduce all resource costs by 5% per level.", 
-        unlocked: false, unlockTask: "Reject Divinity" 
-      }
-    };
-    let tasks = [
-      // Repeatable Tasks
-      { 
-        name: "Siphon Mana", 
-        baseTime: 4, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        repeatable: true, 
-        yields: { mana: 5 }, 
-        description: "Draw mana from the ethereal void.", 
-        unlocked: true, 
-        safe: true 
-      },
-      { 
-        name: "Seek Knowledge", 
-        baseTime: 4, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        repeatable: true, 
-        yields: { knowledge: 3 }, 
-        description: "Study occult lore.", 
-        unlocked: false, 
-        unlockTask: "Reject Divinity", 
-        safe: true 
-      },
-      { 
-        name: "Meditate in Solitude", 
-        baseTime: 5, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        repeatable: true, 
-        yields: { mana: 3 }, 
-        notorietyCost: -10, 
-        maxCompletions: 3, 
-        completionsThisLoop: 0, 
-        description: "Meditate to clear your infamy.", 
-        unlocked: true, 
-        safe: true 
-      },
-      { 
-        name: "Study Ancient Texts", 
-        baseTime: 5, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        repeatable: true, 
-        yields: { knowledge: 2 }, 
-        notorietyCost: -10, 
-        maxCompletions: 3, 
-        completionsThisLoop: 0, 
-        description: "Study texts to reduce suspicion.", 
-        unlocked: false, 
-        unlockTask: "Reject Divinity", 
-        safe: true 
-      },
-      // Stage 1: Tragic Origins
-      { 
-        name: "Survive Plague", 
-        baseTime: 6, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Reject Divinity"], 
-        cost: { mana: 5 }, 
-        description: "Endure the plague that claims your family.", 
-        resourceMaxIncrease: { mana: 25 }, 
-        notorietyCost: 5 
-      },
-      { 
-        name: "Reject Divinity", 
-        baseTime: 5, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Steal Grimoire"], 
-        requires: ["Survive Plague"], 
-        cost: { knowledge: 3 }, 
-        description: "Denounce gods, embracing death’s power.", 
-        resourceMaxIncrease: { knowledge: 10 }, 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Steal Grimoire", 
-        baseTime: 8, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Reanimate Crow"], 
-        requires: ["Reject Divinity"], 
-        cost: { mana: 5, knowledge: 5 }, 
-        description: "Steal a grimoire to learn necromancy.", 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Reanimate Crow", 
-        baseTime: 10, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Flee Village"], 
-        requires: ["Steal Grimoire"], 
-        cost: { mana: 10 }, 
-        description: "Reanimate a crow, your first triumph.", 
-        notorietyCost: 15 
-      },
-      { 
-        name: "Flee Village", 
-        baseTime: 12, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Vow Vengeance"], 
-        requires: ["Reanimate Crow"], 
-        cost: { mana: 15 }, 
-        description: "Escape as elders burn your home.", 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Vow Vengeance", 
-        baseTime: 15, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Track Malakar"], 
-        requires: ["Flee Village"], 
-        cost: { mana: 20 }, 
-        description: "Swear to master death for revenge.", 
-        notorietyCost: 10 
-      },
-      // Stage 2: Gathering Knowledge (Scholarly Path)
-      { 
-        name: "Track Malakar", 
-        baseTime: 6, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Face Undead Trials"], 
-        requires: ["Vow Vengeance"], 
-        cost: { mana: 5, knowledge: 3 }, 
-        description: "Locate Malakar in the Ashen Catacombs.", 
-        safe: true 
-      },
-      { 
-        name: "Face Undead Trials", 
-        baseTime: 8, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Study Soul-Binding", "Learn Corpse Preservation"], 
-        requires: ["Track Malakar"], 
-        cost: { mana: 10 }, 
-        description: "Survive undead trials to earn Malakar’s trust.", 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Study Soul-Binding", 
-        baseTime: 7, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Poison Malakar"], 
-        requires: ["Face Undead Trials"], 
-        cost: { knowledge: 5 }, 
-        description: "Learn advanced soul-binding techniques.", 
-        notorietyCost: 15 
-      },
-      { 
-        name: "Learn Corpse Preservation", 
-        baseTime: 7, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Poison Malakar"], 
-        requires: ["Face Undead Trials"], 
-        cost: { knowledge: 5 }, 
-        description: "Master preserving corpses for rituals.", 
-        notorietyCost: 15 
-      },
-      { 
-        name: "Poison Malakar", 
-        baseTime: 10, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Steal Codex of the Veil"], 
-        requires: ["Study Soul-Binding", "Learn Corpse Preservation"], 
-        cost: { mana: 15, knowledge: 5 }, 
-        description: "Betray and poison Malakar for his secrets.", 
-        notorietyCost: 15 
-      },
-      { 
-        name: "Steal Codex of the Veil", 
-        baseTime: 8, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Decipher Soul Anchors", "Learn Mana Leeching"], 
-        requires: ["Poison Malakar"], 
-        cost: { mana: 10, knowledge: 5 }, 
-        description: "Seize Malakar’s Codex of lichdom rituals.", 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Decipher Soul Anchors", 
-        baseTime: 9, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Infiltrate Libraries"], 
-        requires: ["Steal Codex of the Veil"], 
-        cost: { knowledge: 7 }, 
-        description: "Decode soul anchor rituals in the Codex.", 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Learn Mana Leeching", 
-        baseTime: 9, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Infiltrate Libraries"], 
-        requires: ["Steal Codex of the Veil"], 
-        cost: { mana: 15, knowledge: 5 }, 
-        description: "Master mana leeching from the Codex.", 
-        notorietyCost: 10 
-      },
-      { 
-        name: "Infiltrate Libraries", 
-        baseTime: 10, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Corrupt Historian"], 
-        requires: ["Decipher Soul Anchors", "Learn Mana Leeching"], 
-        cost: { mana: 10, knowledge: 5 }, 
-        description: "Copy ley line texts as a disguised scholar.", 
-        safe: true 
-      },
-      { 
-        name: "Corrupt Historian", 
-        baseTime: 12, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        unlocks: ["Access Black Archives"], 
-        requires: ["Infiltrate Libraries"], 
-        cost: { mana: 15 }, 
-        description: "Bribe a historian for Black Archives access.", 
-        safe: true 
-      },
-      { 
-        name: "Access Black Archives", 
-        baseTime: 12, 
-        proficiency: 0, 
-        isActive: false, 
-        completed: false, 
-        requires: ["Corrupt Historian"], 
-        cost: { knowledge: 10 }, 
-        description: "Study heretical texts in the Black Archives.", 
-        resourceMaxIncrease: { knowledge: 25 }, 
-        safe: true 
-      }
-    ];
     let loopCount = 1;
     let currentTask = null;
     let taskProgress = 0;
@@ -590,10 +81,16 @@
     let taskStartTime = 0;
     let logMessages = [];
     let lastSaveTime = 0;
+    let settings = {
+      showProficiency: true,
+      showEstimatedTime: true,
+      notorietyTaskMode: false
+    };
 
     function setup() {
       noCanvas();
       loadGame();
+      loadSettings();
       renderTaskList();
       renderUpgradeList();
       updateResourcesDisplay();
@@ -607,6 +104,13 @@
         let progressPercent = (taskProgress / getTaskTime(task)) * 100;
         let progressBar = document.getElementById(`progress-${currentTask}`);
         if (progressBar) progressBar.style.width = `${progressPercent}%`;
+        
+        // Notoriety progression mode: 1 per second during tasks
+        if (settings.notorietyTaskMode && resources.notoriety) {
+          resources.notoriety.value = Math.min(100, resources.notoriety.value + (1 / 60));
+          updateNotorietyDisplay();
+        }
+        
         if (taskProgress >= getTaskTime(task)) {
           completeTask();
         }
@@ -633,7 +137,8 @@
         taskProgress,
         logMessages,
         statusMessage,
-        taskStartTime
+        taskStartTime,
+        settings
       };
       localStorage.setItem('necromancerGame', JSON.stringify(gameState));
       lastSaveTime = frameCount / 60;
@@ -658,16 +163,30 @@
         }
         upgrades = gameState.upgrades || upgrades;
         tasks = gameState.tasks || tasks;
+        // Ensure all repeatable tasks have autoRepeat property
+        tasks.forEach(task => {
+          if (task.repeatable && task.autoRepeat === undefined) {
+            task.autoRepeat = false;
+          }
+        });
         loopCount = gameState.loopCount || 1;
         currentTask = gameState.currentTask || null;
         taskProgress = gameState.taskProgress || 0;
         logMessages = gameState.logMessages || [];
         statusMessage = gameState.statusMessage || "Begin your path to eternal dominion!";
         taskStartTime = gameState.taskStartTime || 0;
+        settings = gameState.settings || settings;
         updateLoopDisplay();
         updateNotorietyDisplay();
         updateLog();
+        loadSettings();
       }
+    }
+
+    function loadSettings() {
+      document.getElementById('show-proficiency').checked = settings.showProficiency;
+      document.getElementById('show-estimated-time').checked = settings.showEstimatedTime;
+      document.getElementById('notoriety-task-mode').checked = settings.notorietyTaskMode;
     }
 
     function setupOptionsModal() {
@@ -677,6 +196,28 @@
       const exportButton = document.getElementById('export-save');
       const importInput = document.getElementById('import-save');
       const wipeButton = document.getElementById('wipe-save');
+      const showProficiencyCheck = document.getElementById('show-proficiency');
+      const showEstimatedTimeCheck = document.getElementById('show-estimated-time');
+      const notorietyTaskModeCheck = document.getElementById('notoriety-task-mode');
+
+      loadSettings();
+
+      showProficiencyCheck.addEventListener('change', (e) => {
+        settings.showProficiency = e.target.checked;
+        renderTaskList();
+        saveGame();
+      });
+
+      showEstimatedTimeCheck.addEventListener('change', (e) => {
+        settings.showEstimatedTime = e.target.checked;
+        renderTaskList();
+        saveGame();
+      });
+
+      notorietyTaskModeCheck.addEventListener('change', (e) => {
+        settings.notorietyTaskMode = e.target.checked;
+        saveGame();
+      });
 
       const focusableElements = modal.querySelectorAll('button, input');
       const firstFocusable = focusableElements[0];
@@ -717,17 +258,18 @@
       });
 
       exportButton.addEventListener('click', () => {
-        const gameState = {
-          resources,
-          upgrades,
-          tasks,
-          loopCount,
-          currentTask,
-          taskProgress,
-          logMessages,
-          statusMessage,
-          taskStartTime
-        };
+              const gameState = {
+                resources,
+                upgrades,
+                tasks,
+                loopCount,
+                currentTask,
+                taskProgress,
+                logMessages,
+                statusMessage,
+                taskStartTime,
+                settings
+              };
         const blob = new Blob([JSON.stringify(gameState, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -768,7 +310,9 @@
               logMessages = gameState.logMessages;
               statusMessage = gameState.statusMessage;
               taskStartTime = gameState.taskStartTime;
+              settings = gameState.settings || settings;
               saveGame();
+              loadSettings();
               renderTaskList();
               renderUpgradeList();
               updateResourcesDisplay();
@@ -829,23 +373,61 @@
           let costText = task.cost ? `Cost: ${Object.entries(adjustedCost).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
           let yieldsText = task.yields ? `Yields: ${Object.entries(task.yields).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
           let notorietyText = task.notorietyCost ? `Notoriety: ${task.notorietyCost > 0 ? "+" : ""}${task.notorietyCost}` : "";
+          let proficiencyText = "";
+          if (task.repeatable) {
+            if (settings.showProficiency) {
+              proficiencyText = `<div>Proficiency: ${task.proficiency}</div>`;
+            }
+          } else {
+            proficiencyText = `<div>Proficiency: ${task.proficiency}</div>`;
+          }
+          let estimatedTimeText = "";
+          if (task.repeatable && settings.showEstimatedTime) {
+            let estimatedTime = getTaskTime(task);
+            estimatedTimeText = `<div>Time: ~${estimatedTime.toFixed(1)}s</div>`;
+          }
+          let autoRepeatToggle = "";
+          if (task.repeatable) {
+            autoRepeatToggle = `
+              <div class="auto-repeat-toggle">
+                <label>
+                  <input type="checkbox" class="auto-repeat-checkbox" data-task-index="${index}" ${task.autoRepeat ? 'checked' : ''}>
+                  Auto Repeat
+                </label>
+              </div>
+            `;
+          }
           card.innerHTML = `
             <div class="task-name">${task.name}</div>
             <div>${task.description}</div>
-            ${task.repeatable ? "" : `<div>Proficiency: ${task.proficiency}</div>`}
+            ${proficiencyText}
+            ${estimatedTimeText}
             ${costText ? `<div>${costText}</div>` : ""}
             ${yieldsText ? `<div>${yieldsText}</div>` : ""}
             ${notorietyText ? `<div>${notorietyText}</div>` : ""}
             ${task.maxCompletions ? `<div>Uses left: ${task.maxCompletions - task.completionsThisLoop}/${task.maxCompletions}</div>` : ""}
+            ${autoRepeatToggle}
             <div class="progress-bar"><div class="progress" id="progress-${index}"></div></div>
           `;
           if (!isLocked && (task.unlocked || !task.unlockTask) && hasCompletions) {
             let btn = createButton(`Start ${task.name}`);
-            btn.elt.style.marginTop = "5px";
+            btn.elt.style.marginTop = "8px";
             btn.elt.id = `button-${index}`;
             btn.elt.disabled = !hasResources || currentTask !== null || !hasCompletions;
             btn.mousePressed(() => startTask(index));
             btn.parent(card);
+            
+            // Add event listener for auto-repeat toggle
+            if (task.repeatable) {
+              let checkbox = card.querySelector('.auto-repeat-checkbox');
+              if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                  tasks[index].autoRepeat = e.target.checked;
+                  saveGame();
+                });
+              }
+            }
+            
             if (!hasResources) {
               card.innerHTML += `<div>Insufficient resources: ${costText}</div>`;
             }
@@ -934,9 +516,12 @@
             for (let [resource, amount] of Object.entries(task.cost)) {
               resources[resource].value -= amount;
             }
-            updateResourcesDisplay();
           }
+          // Immediately update all displays when task starts
+          updateResourcesDisplay();
           renderTaskList();
+          renderUpgradeList();
+          updateButtons();
           saveGame();
         }
       }
@@ -977,7 +562,7 @@
         }
         updateResourcesDisplay();
       }
-      if (task.notorietyCost && !task.safe) {
+      if (task.notorietyCost && !task.safe && !settings.notorietyTaskMode) {
         resources.notoriety.value = Math.max(0, Math.min(100, resources.notoriety.value + task.notorietyCost));
         updateNotorietyDisplay();
       }
@@ -995,6 +580,22 @@
       saveGame();
       if (tasks.filter(t => !t.repeatable).every(t => t.completed)) {
         statusMessage = "Knowledge amassed! Choose your path to power.";
+      }
+      
+      // Auto-repeat for repeatable tasks (per-task setting)
+      if (task.repeatable && task.autoRepeat) {
+        let taskIndex = tasks.findIndex(t => t.name === task.name);
+        if (taskIndex !== -1) {
+          let repeatTask = tasks[taskIndex];
+          let hasResources = checkResources(repeatTask);
+          let hasCompletions = !repeatTask.maxCompletions || repeatTask.completionsThisLoop < repeatTask.maxCompletions;
+          if (hasResources && hasCompletions && (repeatTask.unlocked || !repeatTask.unlockTask)) {
+            // Small delay to allow UI to update
+            setTimeout(() => {
+              startTask(taskIndex);
+            }, 100);
+          }
+        }
       }
     }
 
