@@ -69,6 +69,12 @@
             Notoriety: 1/sec during Tasks Only
           </label>
         </div>
+        <div class="option-item">
+          <label>
+            <input type="checkbox" id="developer-mode">
+            Developer Mode (Instant Actions)
+          </label>
+        </div>
       </div>
       <div class="options-section">
         <div class="options-section-title">Save Management</div>
@@ -92,7 +98,8 @@
     let settings = {
       showProficiency: true,
       showEstimatedTime: true,
-      notorietyTaskMode: false
+      notorietyTaskMode: false,
+      developerMode: false
     };
     let pathLog = {
       completions: {},
@@ -101,8 +108,16 @@
     };
     const baseResources = JSON.parse(JSON.stringify(resources));
 
+    // Debug logging helper with line numbers
+    function debugLog(message, line) {
+      if (settings.developerMode) {
+        console.log(`[L${line}] ${message}`);
+      }
+    }
+
     function setup() {
       noCanvas();
+      debugLog("Setup started", 64);
       loadGame();
       loadSettings();
       renderTaskList();
@@ -111,6 +126,7 @@
       updateResourcesDisplay();
       setupOptionsModal();
       setupTabs();
+      debugLog("Setup completed", 72);
     }
 
     function draw() {
@@ -128,13 +144,16 @@
         }
         
         if (taskProgress >= getTaskTime(task)) {
+          debugLog(`Task ${task.name} completed`, 92);
           completeTask();
         }
       }
       if (resources.notoriety && resources.notoriety.value >= 100) {
+        debugLog("Notoriety reached 100, ending loop", 97);
         endLoop();
       }
       if (frameCount % 600 === 0) { // Every 10 seconds
+        debugLog("Auto-saving game", 101);
         saveGame();
       }
       updateResourcesDisplay();
@@ -145,6 +164,7 @@
     }
 
     function saveGame() {
+      debugLog("Saving game state", 111);
       const gameState = {
         resources,
         upgrades,
@@ -160,75 +180,109 @@
       };
       localStorage.setItem('necromancerGame', JSON.stringify(gameState));
       lastSaveTime = frameCount / 60;
+      debugLog("Game saved successfully", 127);
     }
 
     function loadGame() {
+      debugLog("Loading game", 131);
       const savedGame = localStorage.getItem('necromancerGame');
       if (savedGame) {
-        const gameState = JSON.parse(savedGame);
-        // Merge saved resources with default to ensure all exist
-        resources = JSON.parse(JSON.stringify(baseResources));
-        if (gameState.resources) {
-          for (let key in gameState.resources) {
-            if (resources[key]) {
-              resources[key] = { ...resources[key], ...gameState.resources[key] };
-            } else {
-              resources[key] = gameState.resources[key];
+        try {
+          const gameState = JSON.parse(savedGame);
+          debugLog("Save file parsed successfully", 137);
+          
+          // Merge saved resources with default to ensure all exist
+          resources = JSON.parse(JSON.stringify(baseResources));
+          if (gameState.resources) {
+            for (let key in gameState.resources) {
+              if (resources[key]) {
+                resources[key] = { ...resources[key], ...gameState.resources[key] };
+              } else {
+                resources[key] = gameState.resources[key];
+              }
             }
           }
+          
+          upgrades = gameState.upgrades || upgrades;
+          tasks = gameState.tasks || tasks;
+          pathLog = gameState.pathLog || pathLog;
+          
+          // ensure pathLog sub-objects exist
+          pathLog.completions = pathLog.completions || {};
+          pathLog.choiceSelections = pathLog.choiceSelections || {};
+          pathLog.automation = pathLog.automation || {};
+          
+          // Ensure all repeatable tasks have autoRepeat and minimized properties
+          tasks.forEach((task, index) => {
+            if (task.repeatable) {
+              if (task.autoRepeat === undefined) {
+                task.autoRepeat = false;
+              }
+              if (task.minimized === undefined) {
+                task.minimized = false;
+              }
+            }
+            if (task.completionsThisLoop === undefined) task.completionsThisLoop = 0;
+            if (task.completionsTotal === undefined) task.completionsTotal = pathLog.completions[task.name] || 0;
+          });
+          
+          loopCount = gameState.loopCount || 1;
+          currentTask = gameState.currentTask || null;
+          taskProgress = gameState.taskProgress || 0;
+          logMessages = gameState.logMessages || [];
+          statusMessage = gameState.statusMessage || "Begin your path to eternal dominion!";
+          taskStartTime = gameState.taskStartTime || 0;
+          settings = gameState.settings || settings;
+          
+          updateLoopDisplay();
+          updateNotorietyDisplay();
+          updateLog();
+          loadSettings();
+          debugLog("Game loaded successfully", 189);
+          
+        } catch (error) {
+          debugLog(`Error loading game: ${error.message}`, 192);
+          alert("Error loading save file. Starting fresh game.");
+          initializeDefaultGame();
         }
-        upgrades = gameState.upgrades || upgrades;
-        tasks = gameState.tasks || tasks;
-        pathLog = gameState.pathLog || pathLog;
-        // ensure pathLog sub-objects exist
-        pathLog.completions = pathLog.completions || {};
-        pathLog.choiceSelections = pathLog.choiceSelections || {};
-        pathLog.automation = pathLog.automation || {};
-        // Ensure all repeatable tasks have autoRepeat and minimized properties
-        tasks.forEach(task => {
-          if (task.repeatable) {
-            if (task.autoRepeat === undefined) {
-              task.autoRepeat = false;
-            }
-            if (task.minimized === undefined) {
-              task.minimized = false;
-            }
-          }
-          if (task.completionsThisLoop === undefined) task.completionsThisLoop = 0;
-          if (task.completionsTotal === undefined) task.completionsTotal = pathLog.completions[task.name] || 0;
-        });
-        loopCount = gameState.loopCount || 1;
-        currentTask = gameState.currentTask || null;
-        taskProgress = gameState.taskProgress || 0;
-        logMessages = gameState.logMessages || [];
-        statusMessage = gameState.statusMessage || "Begin your path to eternal dominion!";
-        taskStartTime = gameState.taskStartTime || 0;
-        settings = gameState.settings || settings;
-        updateLoopDisplay();
-        updateNotorietyDisplay();
-        updateLog();
-        loadSettings();
+      } else {
+        debugLog("No save file found, initializing default game", 197);
+        initializeDefaultGame();
       }
-      else {
-        // Initialize defaults when no save exists
-        tasks.forEach(task => {
-          if (task.repeatable) {
-            if (task.autoRepeat === undefined) task.autoRepeat = false;
-            if (task.minimized === undefined) task.minimized = false;
-          }
-          task.completionsThisLoop = task.completionsThisLoop || 0;
-          task.completionsTotal = task.completionsTotal || 0;
-        });
-      }
+    }
+
+    function initializeDefaultGame() {
+      debugLog("Initializing default game state", 202);
+      tasks.forEach((task, index) => {
+        if (task.repeatable) {
+          if (task.autoRepeat === undefined) task.autoRepeat = false;
+          if (task.minimized === undefined) task.minimized = false;
+        }
+        task.completionsThisLoop = task.completionsThisLoop || 0;
+        task.completionsTotal = task.completionsTotal || 0;
+      });
     }
 
     function loadSettings() {
+      debugLog("Loading settings", 216);
       document.getElementById('show-proficiency').checked = settings.showProficiency;
       document.getElementById('show-estimated-time').checked = settings.showEstimatedTime;
       document.getElementById('notoriety-task-mode').checked = settings.notorietyTaskMode;
+      document.getElementById('developer-mode').checked = settings.developerMode;
+      
+      // Apply developer mode if enabled
+      if (settings.developerMode) {
+        tasks.forEach((task, index) => {
+          if (task.baseTime > 0) {
+            task.originalBaseTime = task.baseTime;
+            task.baseTime = 0.1;
+          }
+        });
+      }
     }
 
     function setupOptionsModal() {
+      debugLog("Setting up options modal", 235);
       const modal = document.getElementById('options-modal');
       const cogButton = document.getElementById('cog-button');
       const closeButton = document.getElementById('close-modal');
@@ -238,6 +292,7 @@
       const showProficiencyCheck = document.getElementById('show-proficiency');
       const showEstimatedTimeCheck = document.getElementById('show-estimated-time');
       const notorietyTaskModeCheck = document.getElementById('notoriety-task-mode');
+      const developerModeCheck = document.getElementById('developer-mode');
 
       loadSettings();
 
@@ -245,16 +300,46 @@
         settings.showProficiency = e.target.checked;
         renderTaskList();
         saveGame();
+        debugLog(`Show proficiency: ${settings.showProficiency}`, 254);
       });
 
       showEstimatedTimeCheck.addEventListener('change', (e) => {
         settings.showEstimatedTime = e.target.checked;
         renderTaskList();
         saveGame();
+        debugLog(`Show estimated time: ${settings.showEstimatedTime}`, 260);
       });
 
       notorietyTaskModeCheck.addEventListener('change', (e) => {
         settings.notorietyTaskMode = e.target.checked;
+        saveGame();
+        debugLog(`Notoriety task mode: ${settings.notorietyTaskMode}`, 265);
+      });
+
+      developerModeCheck.addEventListener('change', (e) => {
+        settings.developerMode = e.target.checked;
+        if (settings.developerMode) {
+          debugLog("Developer mode enabled", 270);
+          // Store original times and set to near-instant
+          tasks.forEach((task, index) => {
+            if (task.baseTime > 0 && !task.originalBaseTime) {
+              task.originalBaseTime = task.baseTime;
+            }
+            if (settings.developerMode) {
+              task.baseTime = 0.1;
+            }
+          });
+        } else {
+          debugLog("Developer mode disabled", 281);
+          // Restore original times
+          tasks.forEach((task, index) => {
+            if (task.originalBaseTime !== undefined) {
+              task.baseTime = task.originalBaseTime;
+              delete task.originalBaseTime;
+            }
+          });
+        }
+        renderTaskList();
         saveGame();
       });
 
@@ -265,15 +350,18 @@
       cogButton.addEventListener('click', () => {
         modal.style.display = 'flex';
         firstFocusable.focus();
+        debugLog("Options modal opened", 302);
       });
 
       closeButton.addEventListener('click', () => {
         modal.style.display = 'none';
+        debugLog("Options modal closed", 306);
       });
 
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
           modal.style.display = 'none';
+          debugLog("Options modal closed via backdrop", 311);
         }
       });
 
@@ -293,23 +381,25 @@
         }
         if (e.key === 'Escape') {
           modal.style.display = 'none';
+          debugLog("Options modal closed via Escape", 329);
         }
       });
 
       exportButton.addEventListener('click', () => {
-              const gameState = {
-                resources,
-                upgrades,
-                tasks,
-                loopCount,
-                currentTask,
-                taskProgress,
-                logMessages,
-                statusMessage,
-                taskStartTime,
-                settings,
-                pathLog
-              };
+        debugLog("Exporting save file", 333);
+        const gameState = {
+          resources,
+          upgrades,
+          tasks,
+          loopCount,
+          currentTask,
+          taskProgress,
+          logMessages,
+          statusMessage,
+          taskStartTime,
+          settings,
+          pathLog
+        };
         const blob = new Blob([JSON.stringify(gameState, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -317,11 +407,13 @@
         a.download = 'savegame.json';
         a.click();
         URL.revokeObjectURL(url);
+        debugLog("Save file exported", 352);
       });
 
       importInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
+          debugLog("Importing save file", 358);
           const reader = new FileReader();
           reader.onload = (event) => {
             try {
@@ -331,6 +423,7 @@
                   !gameState.statusMessage || !gameState.taskStartTime) {
                 throw new Error('Invalid save file structure');
               }
+              
               // Merge saved resources with default
               resources = JSON.parse(JSON.stringify(baseResources));
               for (let key in gameState.resources) {
@@ -340,6 +433,7 @@
                   resources[key] = gameState.resources[key];
                 }
               }
+              
               upgrades = gameState.upgrades;
               tasks = gameState.tasks;
               loopCount = gameState.loopCount;
@@ -353,7 +447,8 @@
               pathLog.completions = pathLog.completions || {};
               pathLog.choiceSelections = pathLog.choiceSelections || {};
               pathLog.automation = pathLog.automation || {};
-              tasks.forEach(task => {
+              
+              tasks.forEach((task, index) => {
                 if (task.repeatable) {
                   if (task.autoRepeat === undefined) task.autoRepeat = false;
                   if (task.minimized === undefined) task.minimized = false;
@@ -361,6 +456,7 @@
                 if (task.completionsThisLoop === undefined) task.completionsThisLoop = 0;
                 if (task.completionsTotal === undefined) task.completionsTotal = pathLog.completions[task.name] || 0;
               });
+              
               saveGame();
               loadSettings();
               renderTaskList();
@@ -371,7 +467,10 @@
               updateNotorietyDisplay();
               updateLog();
               modal.style.display = 'none';
+              debugLog("Save file imported successfully", 416);
+              
             } catch (error) {
+              debugLog(`Error importing save: ${error.message}`, 419);
               alert('Invalid save file: ' + error.message);
             }
           };
@@ -381,6 +480,7 @@
 
       wipeButton.addEventListener('click', () => {
         if (confirm('Are you sure you want to wipe your save?')) {
+          debugLog("Wiping save file", 429);
           localStorage.removeItem('necromancerGame');
           location.reload();
         }
@@ -388,56 +488,86 @@
     }
 
     function setupTabs() {
+      debugLog("Setting up tabs", 437);
       const tabTasks = document.getElementById("tab-tasks");
       const tabPaths = document.getElementById("tab-paths");
       const board = document.getElementById("board");
       const pathPanel = document.getElementById("path-panel");
+      
       const activateTab = (tabName) => {
         if (tabName === "tasks") {
           tabTasks.classList.add("active");
           tabPaths.classList.remove("active");
           board.classList.add("active");
           pathPanel.classList.remove("active");
+          debugLog("Switched to Tasks tab", 449);
         } else {
           tabPaths.classList.add("active");
           tabTasks.classList.remove("active");
           pathPanel.classList.add("active");
           board.classList.remove("active");
           renderPathLog();
+          debugLog("Switched to Paths tab", 455);
         }
       };
+      
       tabTasks.addEventListener('click', () => activateTab("tasks"));
       tabPaths.addEventListener('click', () => activateTab("paths"));
     }
 
     function renderTaskList() {
+      debugLog("Rendering task list", 463);
       let taskList = document.getElementById("task-list");
       let repeatableTaskList = document.getElementById("repeatable-task-list");
       taskList.innerHTML = "<h3>Story Tasks</h3>";
       repeatableTaskList.innerHTML = "<h3>Resource Tasks</h3>";
       buttons = [];
+      
+      // Check if a SeedChoice has been made
+      const seedChoiceMade = tasks.some(task => 
+        task.choiceGroup === "SeedChoice" && task.completed
+      );
+      
+      debugLog(`Seed choice made: ${seedChoiceMade}`, 476);
+      
       tasks.forEach((task, index) => {
         if (!task.unlocked && task.unlockTask) {
           task.unlocked = tasks.some(t => t.name === task.unlockTask && t.completed);
         }
-        let isVisible = task.repeatable ? 
+        
+        // Check if this is a SeedChoice task that should be hidden due to exclusivity
+        let isHiddenByExclusivity = false;
+        if (task.choiceGroup === "SeedChoice" && seedChoiceMade) {
+          // Hide all SeedChoice tasks if one has been completed, unless this one is completed
+          if (!task.completed) {
+            debugLog(`Hiding ${task.name} due to exclusive SeedChoice`, 488);
+            isHiddenByExclusivity = true;
+          }
+        }
+        
+        let isVisible = !isHiddenByExclusivity && (task.repeatable ? 
           (task.unlocked || !task.unlockTask) : 
           (!task.completed && (!task.requires || task.requires.every(req => 
             tasks.find(t => t.name === req).completed
-          )));
+          ))));
+        
         if (isVisible) {
           let isLocked = task.requires && !task.requires.every(req => 
             tasks.find(t => t.name === req).completed
           );
           let hasResources = checkResources(task);
           let hasCompletions = !task.maxCompletions || task.completionsThisLoop < task.maxCompletions;
+          
           let card = document.createElement("div");
           let cardClasses = `task-card ${isLocked ? "locked" : ""} ${task.repeatable ? "repeatable" : ""} ${task.safe ? "safe" : ""}`;
+          
           // Only apply minimized class to repeatable tasks
           if (task.repeatable && task.minimized) {
             cardClasses += " minimized";
           }
+          
           card.className = cardClasses;
+          
           let adjustedCost = task.cost ? Object.entries(task.cost).reduce((acc, [k, v]) => {
             let cost = v;
             if (k === "mana" && upgrades.manaEfficiency.level > 0) {
@@ -449,10 +579,12 @@
             acc[k] = Math.ceil(cost);
             return acc;
           }, {}) : {};
+          
           let costText = task.cost ? `Cost: ${Object.entries(adjustedCost).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
           let yieldsText = task.yields ? `Yields: ${Object.entries(task.yields).map(([k, v]) => `${k}: ${v}`).join(", ")}` : "";
           let notorietyText = task.notorietyCost ? `Notoriety: ${task.notorietyCost > 0 ? "+" : ""}${task.notorietyCost}` : "";
           let proficiencyText = "";
+          
           if (task.repeatable) {
             if (settings.showProficiency) {
               proficiencyText = `<div>Proficiency: ${task.proficiency}</div>`;
@@ -460,11 +592,13 @@
           } else {
             proficiencyText = `<div>Proficiency: ${task.proficiency}</div>`;
           }
+          
           let estimatedTimeText = "";
           if (task.repeatable && settings.showEstimatedTime) {
             let estimatedTime = getTaskTime(task);
             estimatedTimeText = `<div>Time: ~${estimatedTime.toFixed(1)}s</div>`;
           }
+          
           let autoRepeatToggle = "";
           let minimizeButton = "";
           if (task.repeatable) {
@@ -479,6 +613,7 @@
             let minimizeSymbol = task.minimized ? "+" : "−";
             minimizeButton = `<button class="minimize-button" data-task-index="${index}">${minimizeSymbol}</button>`;
           }
+          
           let taskContent = `
             <div class="task-content">
               <div>${task.description}</div>
@@ -492,8 +627,10 @@
               <div class="progress-bar"><div class="progress" id="progress-${index}"></div></div>
             </div>
           `;
+          
           // For story tasks (non-repeatable), always show content. For resource tasks, check minimized state
           let shouldShowContent = !task.repeatable || !task.minimized;
+          
           card.innerHTML = `
             <div class="task-header">
               <div class="task-name">${task.name}</div>
@@ -501,14 +638,24 @@
             </div>
             ${shouldShowContent ? taskContent : ""}
           `;
+          
           if (!isLocked && (task.unlocked || !task.unlockTask) && hasCompletions) {
             // Only show start button if task is not minimized (only applies to repeatable tasks)
             let shouldShowButton = !task.repeatable || !task.minimized;
+            
             if (shouldShowButton) {
               let btn = createButton(`Start ${task.name}`);
               btn.elt.style.marginTop = "8px";
               btn.elt.id = `button-${index}`;
-              btn.elt.disabled = !hasResources || currentTask !== null || !hasCompletions;
+              
+              // Disable button if another SeedChoice has been made
+              let isDisabledByExclusivity = false;
+              if (task.choiceGroup === "SeedChoice" && seedChoiceMade && !task.completed) {
+                isDisabledByExclusivity = true;
+                debugLog(`Disabling ${task.name} due to exclusive SeedChoice already made`, 603);
+              }
+              
+              btn.elt.disabled = isDisabledByExclusivity || !hasResources || currentTask !== null || !hasCompletions;
               btn.mousePressed(() => startTask(index));
               btn.parent(card);
             }
@@ -520,6 +667,7 @@
                 checkbox.addEventListener('change', (e) => {
                   tasks[index].autoRepeat = e.target.checked;
                   saveGame();
+                  debugLog(`Auto-repeat for ${task.name}: ${e.target.checked}`, 617);
                 });
               }
               
@@ -533,6 +681,7 @@
                     tasks[index].minimized = !tasks[index].minimized;
                     renderTaskList();
                     saveGame();
+                    debugLog(`Minimized ${task.name}: ${tasks[index].minimized}`, 630);
                   }
                 });
               }
@@ -569,6 +718,7 @@
                            `Insufficient resources: ${costText}`;
             card.innerHTML += `<div>${lockReason}</div>`;
           }
+          
           if (task.repeatable) {
             repeatableTaskList.appendChild(card);
           } else {
@@ -576,99 +726,207 @@
           }
         }
       });
+      debugLog("Task list rendering complete", 676);
     }
 
     function renderPathLog() {
+      debugLog("Rendering path log", 680);
       const panel = document.getElementById("path-history");
       if (!panel) return;
       panel.innerHTML = "";
-      const grouped = {};
+      
+      // Build tree structure
+      const taskTree = {};
+      const taskByName = {};
+      
+      // First pass: create nodes
       tasks.forEach(task => {
-        if (task.choiceGroup) {
-          if (!grouped[task.choiceGroup]) grouped[task.choiceGroup] = [];
-          grouped[task.choiceGroup].push(task);
+        taskByName[task.name] = {
+          ...task,
+          children: [],
+          parent: null
+        };
+      });
+      
+      // Second pass: build tree structure
+      tasks.forEach(task => {
+        const node = taskByName[task.name];
+        
+        // Connect via requires
+        if (task.requires && task.requires.length > 0) {
+          task.requires.forEach(parentName => {
+            const parent = taskByName[parentName];
+            if (parent) {
+              node.parent = parent;
+              if (!parent.children.some(child => child.name === task.name)) {
+                parent.children.push(node);
+              }
+            }
+          });
+        }
+        
+        // Connect via unlocks
+        if (task.unlocks && Array.isArray(task.unlocks)) {
+          task.unlocks.forEach(childName => {
+            const child = taskByName[childName];
+            if (child && !node.children.some(c => c.name === child.name)) {
+              node.children.push(child);
+              child.parent = node;
+            }
+          });
         }
       });
-      Object.entries(grouped).forEach(([group, groupTasks]) => {
-        // Determine parent selection constraint
-        const parentGroup = groupTasks[0].choiceParentGroup;
-        const parentKey = groupTasks[0].choiceParentKey;
-        if (parentGroup && pathLog.choiceSelections[parentGroup] !== parentKey) {
-          return; // hide branches of other parent choices
+      
+      // Find root nodes (tasks with no requires)
+      const roots = Object.values(taskByName).filter(task => 
+        (!task.requires || task.requires.length === 0) && !task.repeatable
+      );
+      
+      // Recursive function to render tree
+      function renderTreeNode(node, depth = 0, parentSelected = true) {
+        const container = document.createElement("div");
+        container.className = "tree-node";
+        container.style.marginLeft = `${depth * 20}px`;
+        
+        // Check if this node should be visible
+        const completions = pathLog.completions[node.name] || 0;
+        const isCompleted = completions > 0 || node.completed;
+        const isChoiceNode = node.choiceGroup && node.choiceParentGroup;
+        
+        // Hide unseen story beats
+        let shouldShow = false;
+        
+        if (isChoiceNode) {
+          // For choice nodes, check parent selection
+          const parentGroup = node.choiceParentGroup;
+          const parentKey = node.choiceParentKey;
+          if (parentGroup && pathLog.choiceSelections[parentGroup] !== parentKey) {
+            return container; // Don't show unselected branches
+          }
+          shouldShow = true;
+        } else if (!node.repeatable) {
+          // For story tasks, show if:
+          // 1. It's completed
+          // 2. Or a parent is completed (showing available but unpicked)
+          // 3. Or it's a root node
+          const parentCompleted = node.parent ? 
+            (pathLog.completions[node.parent.name] > 0 || node.parent.completed) : 
+            true;
+          shouldShow = isCompleted || parentCompleted || depth === 0;
+        } else {
+          // For repeatable tasks, show if unlocked
+          shouldShow = node.unlocked || !node.unlockTask;
         }
-        const groupDiv = document.createElement("div");
-        groupDiv.className = "path-group";
-        const header = document.createElement("div");
-        header.className = "path-group-header";
-        header.innerText = group.replace(/([A-Z])/g, ' $1').trim();
-        groupDiv.appendChild(header);
-        groupTasks.forEach(task => {
-          const count = pathLog.completions[task.name] || 0;
-          const card = document.createElement("div");
-          const pickedClass = count > 0 ? "picked" : "unpicked";
-          card.className = `path-card ${pickedClass}`;
-          card.innerHTML = `
-            <div class="path-card-title">${task.name}</div>
-            <div class="path-card-desc">${task.description}</div>
-            <div class="path-card-count">Completions: ${count}</div>
+        
+        if (!shouldShow && depth > 0) {
+          return container;
+        }
+        
+        const card = document.createElement("div");
+        const pickedClass = isCompleted ? "picked" : "unpicked";
+        card.className = `path-card ${pickedClass} ${node.repeatable ? "repeatable" : ""}`;
+        
+        // Build connections visualization
+        let connectionHTML = "";
+        if (depth > 0) {
+          connectionHTML = `<div class="tree-connector" style="height: 2px; background: #4a1a4a; margin-bottom: 5px;"></div>`;
+        }
+        
+        card.innerHTML = `
+          ${connectionHTML}
+          <div class="path-card-title">${node.name} ${node.repeatable ? "⟳" : ""}</div>
+          <div class="path-card-desc">${node.description}</div>
+          ${!node.repeatable ? `<div class="path-card-count">Completions: ${completions}</div>` : ""}
+          ${node.choiceGroup ? `<div class="path-card-choice">Choice: ${node.choiceKey}</div>` : ""}
+        `;
+        
+        // Add automation toggle for story tasks
+        const automationAvailable = completions >= 5 && !node.repeatable;
+        if (automationAvailable) {
+          const toggle = document.createElement("label");
+          toggle.className = "auto-story-toggle";
+          const checked = pathLog.automation[node.name] ? "checked" : "";
+          toggle.innerHTML = `
+            <input type="checkbox" data-task-name="${node.name}" ${checked}>
+            Automate after unlock
           `;
-          const automationAvailable = count >= 5 && !task.repeatable;
-          if (automationAvailable) {
-            const toggle = document.createElement("label");
-            toggle.className = "auto-story-toggle";
-            const checked = pathLog.automation[task.name] ? "checked" : "";
-            toggle.innerHTML = `
-              <input type="checkbox" data-task-name="${task.name}" ${checked}>
-              Automate after unlock
-            `;
-            toggle.addEventListener("change", (e) => {
-              pathLog.automation[task.name] = e.target.checked;
-              saveGame();
-            });
-            card.appendChild(toggle);
-          }
-          groupDiv.appendChild(card);
+          toggle.addEventListener("change", (e) => {
+            pathLog.automation[node.name] = e.target.checked;
+            saveGame();
+            debugLog(`Automation for ${node.name}: ${e.target.checked}`, 777);
+          });
+          card.appendChild(toggle);
+        }
+        
+        container.appendChild(card);
+        
+        // Sort children: completed first, then by name
+        const sortedChildren = [...node.children].sort((a, b) => {
+          const aCompleted = pathLog.completions[a.name] > 0 || a.completed;
+          const bCompleted = pathLog.completions[b.name] > 0 || b.completed;
+          if (aCompleted && !bCompleted) return -1;
+          if (!aCompleted && bCompleted) return 1;
+          return a.name.localeCompare(b.name);
         });
-        panel.appendChild(groupDiv);
-      });
-      // Additional milestone tracking for non-choice story tasks
-      const milestoneTasks = tasks.filter(t => !t.repeatable && !t.choiceGroup);
-      if (milestoneTasks.length) {
-        const milestoneHeader = document.createElement("div");
-        milestoneHeader.className = "path-group-header";
-        milestoneHeader.innerText = "Milestones";
-        panel.appendChild(milestoneHeader);
-        milestoneTasks.forEach(task => {
-          const count = pathLog.completions[task.name] || 0;
-          const card = document.createElement("div");
-          const pickedClass = count > 0 ? "picked" : "unpicked";
-          card.className = `path-card ${pickedClass}`;
-          card.innerHTML = `
-            <div class="path-card-title">${task.name}</div>
-            <div class="path-card-desc">${task.description}</div>
-            <div class="path-card-count">Completions: ${count}</div>
-          `;
-          const automationAvailable = count >= 5;
-          if (automationAvailable) {
-            const toggle = document.createElement("label");
-            toggle.className = "auto-story-toggle";
-            const checked = pathLog.automation[task.name] ? "checked" : "";
-            toggle.innerHTML = `
-              <input type="checkbox" data-task-name="${task.name}" ${checked}>
-              Automate after unlock
-            `;
-            toggle.addEventListener("change", (e) => {
-              pathLog.automation[task.name] = e.target.checked;
-              saveGame();
-            });
-            card.appendChild(toggle);
-          }
-          panel.appendChild(card);
+        
+        // Render children
+        sortedChildren.forEach(child => {
+          const childContainer = renderTreeNode(child, depth + 1, isCompleted || parentSelected);
+          container.appendChild(childContainer);
         });
+        
+        return container;
       }
+      
+      // Render all roots
+      roots.sort((a, b) => {
+        const aCompleted = pathLog.completions[a.name] > 0 || a.completed;
+        const bCompleted = pathLog.completions[b.name] > 0 || b.completed;
+        if (aCompleted && !bCompleted) return -1;
+        if (!aCompleted && bCompleted) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      
+      roots.forEach(root => {
+        const rootContainer = renderTreeNode(root, 0);
+        if (rootContainer.children.length > 0) {
+          panel.appendChild(rootContainer);
+        }
+      });
+      
+      // Add CSS for tree
+      const style = document.createElement('style');
+      style.textContent = `
+        .tree-node {
+          margin: 5px 0;
+        }
+        .tree-connector {
+          width: 100%;
+          opacity: 0.3;
+        }
+        .path-card.repeatable {
+          background: rgba(40, 20, 40, 0.7);
+        }
+        .path-card.picked {
+          border-left: 3px solid #6a2a6a;
+        }
+        .path-card.unpicked {
+          border-left: 3px solid #3a1a3a;
+          opacity: 0.7;
+        }
+        .path-card-choice {
+          font-size: 11px;
+          color: #8a6a8a;
+          font-style: italic;
+          margin-top: 2px;
+        }
+      `;
+      panel.appendChild(style);
+      debugLog("Path log rendering complete", 834);
     }
 
     function renderUpgradeList() {
+      debugLog("Rendering upgrade list", 838);
       let upgradePanel = document.getElementById("upgrade-panel");
       upgradePanel.innerHTML = "<h3>Upgrades</h3>";
       Object.entries(upgrades).forEach(([key, upgrade]) => {
@@ -709,9 +967,11 @@
           upgradePanel.appendChild(card);
         }
       });
+      debugLog("Upgrade list rendering complete", 877);
     }
 
     function startTask(index) {
+      debugLog(`Starting task ${tasks[index].name}`, 880);
       if (currentTask === null && (!tasks[index].completed || tasks[index].repeatable)) {
         let task = tasks[index];
         let isLocked = task.requires && !task.requires.every(req => 
@@ -719,86 +979,137 @@
         );
         let hasResources = checkResources(task);
         let hasCompletions = !task.maxCompletions || task.completionsThisLoop < task.maxCompletions;
-        if (!isLocked && hasResources && (task.unlocked || !task.unlockTask) && hasCompletions) {
+        
+        // Check if this is a SeedChoice task and if another has been completed
+        let isBlockedByExclusiveChoice = false;
+        if (task.choiceGroup === "SeedChoice") {
+          const otherSeedChoiceCompleted = tasks.some(t => 
+            t.choiceGroup === "SeedChoice" && 
+            t.name !== task.name && 
+            t.completed
+          );
+          if (otherSeedChoiceCompleted) {
+            isBlockedByExclusiveChoice = true;
+            debugLog(`Cannot start ${task.name}: another SeedChoice already made`, 897);
+          }
+        }
+        
+        if (!isLocked && !isBlockedByExclusiveChoice && hasResources && (task.unlocked || !task.unlockTask) && hasCompletions) {
           task.isActive = true;
           currentTask = index;
           taskProgress = 0;
           taskStartTime = frameCount / 60;
           statusMessage = `Performing ${task.name}...`;
+          
           if (task.cost) {
             for (let [resource, amount] of Object.entries(task.cost)) {
               resources[resource].value -= amount;
+              debugLog(`Deducted ${amount} ${resource}`, 910);
             }
           }
+          
           // Immediately update all displays when task starts
           updateResourcesDisplay();
           renderTaskList();
           renderUpgradeList();
           updateButtons();
           saveGame();
+          debugLog(`Task ${task.name} started successfully`, 919);
         }
       }
     }
 
     function completeTask() {
+      debugLog("Completing task", 924);
       let task = tasks[currentTask];
       let completionTime = (frameCount / 60 - taskStartTime).toFixed(2);
       task.proficiency++;
       task.isActive = false;
       task.completionsTotal = (task.completionsTotal || 0) + 1;
       pathLog.completions[task.name] = (pathLog.completions[task.name] || 0) + 1;
+      
       if (task.choiceGroup) {
         pathLog.choiceSelections[task.choiceGroup] = task.choiceKey;
+        debugLog(`Choice made: ${task.choiceGroup} = ${task.choiceKey}`, 934);
+        
+        // If this is a SeedChoice, mark other SeedChoice tasks as completed to prevent selection
+        if (task.choiceGroup === "SeedChoice") {
+          debugLog("SeedChoice detected, locking other SeedChoice options", 938);
+          tasks.forEach(t => {
+            if (t.choiceGroup === "SeedChoice" && t.name !== task.name) {
+              t.completed = true;
+              debugLog(`Locked ${t.name} due to exclusive SeedChoice`, 942);
+            }
+          });
+        }
       }
+      
       if (!task.repeatable) {
         task.completed = true;
         if (task.resourceMaxIncrease) {
           for (let [resource, amount] of Object.entries(task.resourceMaxIncrease)) {
             resources[resource].max += amount;
             resources[resource].unlocked = true;
+            debugLog(`Increased ${resource} max by ${amount}`, 952);
           }
         }
         if (task.name === "Survive Plague") {
           resources.knowledge.unlocked = true;
           resources.knowledge.value = Math.min(resources.knowledge.value + 3, resources.knowledge.max);
+          debugLog("Knowledge unlocked and increased", 958);
         }
       }
+      
       if (task.maxCompletions) {
         task.completionsThisLoop++;
+        debugLog(`Completions this loop: ${task.completionsThisLoop}/${task.maxCompletions}`, 963);
       }
+      
       if (task.yields) {
         for (let [resource, amount] of Object.entries(task.yields)) {
           let adjustedAmount = amount;
           if (resource === "knowledge" && upgrades.knowledgeBoost.level > 0) {
             adjustedAmount += upgrades.knowledgeBoost.level;
+            debugLog(`Knowledge boost applied: +${upgrades.knowledgeBoost.level}`, 971);
           }
           resources[resource].value = Math.min(
             resources[resource].value + adjustedAmount,
             resources[resource].max
           );
           resources[resource].unlocked = true;
+          debugLog(`Gained ${adjustedAmount} ${resource}`, 978);
         }
         updateResourcesDisplay();
       }
+      
       if (task.notorietyCost && !task.safe && !settings.notorietyTaskMode) {
         resources.notoriety.value = Math.max(0, Math.min(100, resources.notoriety.value + task.notorietyCost));
         updateNotorietyDisplay();
+        debugLog(`Notoriety changed by ${task.notorietyCost}`, 986);
       }
+      
       tasks.forEach(t => {
-        if (t.unlockTask === task.name) t.unlocked = true;
+        if (t.unlockTask === task.name) {
+          t.unlocked = true;
+          debugLog(`Unlocked ${t.name}`, 992);
+        }
       });
+      
       statusMessage = `${task.name} completed!`;
       logMessages.unshift(`${task.name} completed in ${completionTime}s`);
       if (logMessages.length > 10) logMessages.pop();
       updateLog();
+      
       currentTask = null;
       taskProgress = 0;
       renderTaskList();
       renderUpgradeList();
       renderPathLog();
       saveGame();
+      
       if (tasks.filter(t => !t.repeatable).every(t => t.completed)) {
         statusMessage = "Knowledge amassed! Choose your path to power.";
+        debugLog("All story tasks completed!", 1009);
       }
       
       // Auto-repeat for repeatable tasks (per-task setting)
@@ -809,6 +1120,7 @@
           let hasResources = checkResources(repeatTask);
           let hasCompletions = !repeatTask.maxCompletions || repeatTask.completionsThisLoop < repeatTask.maxCompletions;
           if (hasResources && hasCompletions && (repeatTask.unlocked || !repeatTask.unlockTask)) {
+            debugLog(`Auto-repeating ${repeatTask.name}`, 1021);
             // Small delay to allow UI to update
             setTimeout(() => {
               startTask(taskIndex);
@@ -816,13 +1128,16 @@
           }
         }
       }
+      debugLog("Task completion process finished", 1028);
     }
 
     function purchaseUpgrade(key) {
+      debugLog(`Purchasing upgrade: ${key}`, 1032);
       let upgrade = upgrades[key];
       if (upgrade.level < upgrade.maxLevel && checkResources({ cost: upgrade.cost })) {
         for (let [resource, amount] of Object.entries(upgrade.cost)) {
           resources[resource].value -= amount;
+          debugLog(`Paid ${amount} ${resource} for upgrade`, 1037);
         }
         upgrade.level++;
         statusMessage = `${key.replace(/([A-Z])/g, ' $1').trim()} upgraded to level ${upgrade.level}!`;
@@ -833,37 +1148,61 @@
         renderUpgradeList();
         renderTaskList();
         saveGame();
+        debugLog(`Upgrade ${key} purchased, now level ${upgrade.level}`, 1048);
+      } else {
+        debugLog(`Cannot purchase ${key}: insufficient resources or max level`, 1050);
       }
     }
 
     function checkResources(task) {
-      if (!task.cost) return true;
+      debugLog(`Checking resources for task`, 1054);
+      if (!task.cost) {
+        debugLog("No cost, returning true", 1056);
+        return true;
+      }
       let adjustedCost = {};
       for (let [resource, amount] of Object.entries(task.cost)) {
         let cost = amount;
         if (resource === "mana" && upgrades.manaEfficiency.level > 0) {
           cost *= (1 - 0.1 * upgrades.manaEfficiency.level);
+          debugLog(`Mana efficiency applied: ${cost}`, 1064);
         }
         if (upgrades.nihilisticResolve.level > 0) {
           cost *= (1 - 0.05 * upgrades.nihilisticResolve.level);
+          debugLog(`Nihilistic resolve applied: ${cost}`, 1068);
         }
         adjustedCost[resource] = Math.ceil(cost);
       }
-      return Object.entries(adjustedCost).every(([resource, amount]) => resources[resource].value >= amount);
+      
+      const hasResources = Object.entries(adjustedCost).every(([resource, amount]) => {
+        const has = resources[resource].value >= amount;
+        if (!has) {
+          debugLog(`Missing ${amount - resources[resource].value} ${resource}`, 1075);
+        }
+        return has;
+      });
+      
+      debugLog(`Has resources: ${hasResources}`, 1079);
+      return hasResources;
     }
 
     function getTaskTime(task) {
       let time = task.baseTime * (1 - task.proficiency * 0.1);
       if (upgrades.swiftRituals.level > 0) {
         time *= (1 - 0.1 * upgrades.swiftRituals.level);
+        debugLog(`Swift rituals reduction: ${time}`, 1087);
       }
       if (upgrades.crowFamiliar.level > 0) {
         time *= (1 - 0.05 * upgrades.crowFamiliar.level);
+        debugLog(`Crow familiar reduction: ${time}`, 1091);
       }
-      return Math.max(1, time);
+      const result = Math.max(0.1, time);
+      debugLog(`Task time for ${task.name}: ${result}`, 1094);
+      return result;
     }
 
     function endLoop() {
+      debugLog("Ending loop", 1098);
       loopCount++;
       resources.notoriety.value = 0;
       currentTask = null;
@@ -889,16 +1228,19 @@
       renderTaskList();
       renderUpgradeList();
       saveGame();
+      debugLog(`Loop ended, now cycle ${loopCount}`, 1122);
     }
 
     function updateLoopDisplay() {
       document.getElementById("loop").innerText = `Cycle: ${loopCount}`;
+      debugLog(`Updated loop display: ${loopCount}`, 1127);
     }
 
     function updateNotorietyDisplay() {
       if (resources.notoriety) {
         document.getElementById("notoriety").innerText = `Notoriety: ${Math.floor(resources.notoriety.value)}/100`;
         document.getElementById("notoriety-progress").style.width = `${Math.max(0, Math.min(100, (resources.notoriety.value / 100) * 100))}%`;
+        debugLog(`Updated notoriety display: ${Math.floor(resources.notoriety.value)}/100`, 1135);
       }
     }
 
@@ -919,12 +1261,14 @@
     }
 
     function updateButtons() {
+      debugLog("Updating buttons", 1156);
       tasks.forEach((task, index) => {
         let btn = buttons[index];
         if (btn) {
           if (task.completed && !task.repeatable) {
             btn.elt.disabled = true;
             btn.html(`${task.name} (Done)`);
+            debugLog(`Button ${task.name} disabled (completed)`, 1163);
           } else {
             let isLocked = task.requires && !task.requires.every(req => 
               tasks.find(t => t.name === req).completed
@@ -932,8 +1276,24 @@
             let hasResources = checkResources(task);
             let hasCompletions = !task.maxCompletions || task.completionsThisLoop < task.maxCompletions;
             let isActiveTask = currentTask !== null;
-            btn.elt.disabled = isLocked || !hasResources || !task.unlocked || isActiveTask || !hasCompletions;
+            
+            // Check if this is a SeedChoice and another has been made
+            let isBlockedByExclusiveChoice = false;
+            if (task.choiceGroup === "SeedChoice") {
+              const otherSeedChoiceCompleted = tasks.some(t => 
+                t.choiceGroup === "SeedChoice" && 
+                t.name !== task.name && 
+                t.completed
+              );
+              if (otherSeedChoiceCompleted) {
+                isBlockedByExclusiveChoice = true;
+                debugLog(`Button ${task.name} blocked by exclusive choice`, 1182);
+              }
+            }
+            
+            btn.elt.disabled = isLocked || !hasResources || !task.unlocked || isActiveTask || !hasCompletions || isBlockedByExclusiveChoice;
             btn.html(`Start ${task.name}`);
+            debugLog(`Button ${task.name} enabled: ${!btn.elt.disabled}`, 1186);
           }
         }
       });
@@ -948,6 +1308,7 @@
         const requiresMet = !task.requires || task.requires.every(req => tasks.find(t => t.name === req).completed);
         const isUnlocked = task.unlocked || !task.unlockTask || tasks.some(t => t.name === task.unlockTask && t.completed);
         if (requiresMet && isUnlocked && checkResources(task)) {
+          debugLog(`Automation starting ${task.name}`, 1201);
           startTask(index);
         }
       });

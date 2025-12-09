@@ -20,9 +20,6 @@ let resources = {
   voidShards: { value: 0, max: 12, unlocked: false }   // Seal condensed void
 };
 
-// Toggle to make all actions instant for rapid testing
-let developerMode = false;
-
 // Passive and cross-resource interactions (consumed by engine for per-tick effects or caps)
 let resourceInteractions = [
   { source: "scrolls", type: "passiveGain", target: "knowledge", amountPerUnit: 0.01 },
@@ -34,6 +31,7 @@ let resourceInteractions = [
   { source: "sigils", type: "passiveGain", target: "voidFavor", amountPerUnit: 0.05 },
   { source: "voidShards", type: "maxIncrease", target: "entropy", amountPerUnit: 2 }
 ];
+
 let upgrades = {
   // Shared
   manaEfficiency: { level: 0, maxLevel: 3, cost: { mana: 20, knowledge: 10 }, description: "Reduce mana costs by 10% per level.", unlocked: false, unlockTask: "Access Black Archives" },
@@ -42,7 +40,7 @@ let upgrades = {
   crowFamiliar: { level: 0, maxLevel: 3, cost: { mana: 15 }, description: "Reduce task times by 5% per level.", unlocked: false, unlockTask: "Reanimate Crow" },
   nihilisticResolve: { level: 0, maxLevel: 3, cost: { mana: 10, knowledge: 10 }, description: "Reduce all resource costs by 5% per level.", unlocked: false, unlockTask: "Reject Divinity" },
   // Scholar path
-  scholarProofBinder: { level: 0, maxLevel: 3, cost: { knowledge: 10, evidence: 5 }, description: "Increase evidence max by 5 per level.", unlocked: false, unlockTask: "Historian’s Case" },
+  scholarProofBinder: { level: 0, maxLevel: 3, cost: { knowledge: 10, evidence: 5 }, description: "Increase evidence max by 5 per level.", unlocked: false, unlockTask: "Historian's Case" },
   scholarDeepNotation: { level: 0, maxLevel: 3, cost: { knowledge: 12, insight: 4 }, description: "Increase insight max by 5 per level.", unlocked: false, unlockTask: "Map Necrotic Equations" },
   scholarScrollScribes: { level: 0, maxLevel: 3, cost: { scrolls: 4, knowledge: 6 }, description: "Each level adds +0.01 knowledge passive per scroll.", unlocked: false, unlockTask: "Annotate Canticle Margins" },
   scholarGrimoireShelves: { level: 0, maxLevel: 3, cost: { grimoires: 2, knowledge: 8 }, description: "Increase knowledge max by 10 per grimoire and +5 per level.", unlocked: false, unlockTask: "Restore Grimoire Bindings" },
@@ -66,6 +64,7 @@ let upgrades = {
   sealShardConduit: { level: 0, maxLevel: 2, cost: { voidShards: 3, entropy: 6 }, description: "Increase entropy and voidShards max by 3 per level.", unlocked: false, unlockTask: "Harvest Void Shards" },
   sealClosedEquation: { level: 0, maxLevel: 2, cost: { entropy: 8, insight: 6 }, description: "Boost all seal task yields by 10% per level when entropy > 50%.", unlocked: false, unlockTask: "Trace Silent Leylines" }
 };
+
 let tasks = [
   // Prologue: Before the Blight
   { 
@@ -76,7 +75,8 @@ let tasks = [
     completed: false, 
     unlocks: ["Festival Night"], 
     description: "Walk between sunlit rows, learning patience as your father coaxes life from soil while the gods watch idly from their distant seats.", 
-    safe: true 
+    safe: true,
+    yields: { knowledge: 1 }  // ADDED: Early knowledge generation
   },
   { 
     name: "Festival Night", 
@@ -86,8 +86,9 @@ let tasks = [
     completed: false, 
     unlocks: ["Survive Plague"], 
     requires: ["Tend Orchard with Father"], 
-    description: "Lanterns bloom over the square, your mother’s laugh mingles with flutes, and you offer a prayer at the godstone that will go tragically unanswered.", 
-    safe: true 
+    description: "Lanterns bloom over the square, your mother's laugh mingles with flutes, and you offer a prayer at the godstone that will go tragically unanswered.", 
+    safe: true,
+    yields: { knowledge: 2 }  // ADDED: Early knowledge generation
   },
   { 
     name: "Salvage Altar Shards", 
@@ -96,7 +97,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { mana: 4, evidence: 1 }, 
+    yields: { mana: 4, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
     description: "Collect broken godstone chips after the festival to feed your first rites.", 
     unlocked: true, 
     safe: true,
@@ -109,11 +110,25 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { mana: 3 }, 
+    yields: { mana: 3, knowledge: 1 },  // ADDED: knowledge yield
     notorietyCost: -6, 
     maxCompletions: 3, 
     completionsThisLoop: 0, 
     description: "Keep silent watch over the pyres, letting rumor cool while you gather strength.", 
+    unlocked: true, 
+    safe: true,
+    autoRepeat: false
+  },
+  // NEW: Early knowledge generation task
+  { 
+    name: "Study Funeral Rites", 
+    baseTime: 6, 
+    proficiency: 0, 
+    isActive: false, 
+    completed: false, 
+    repeatable: true, 
+    yields: { knowledge: 2, mana: 1 }, 
+    description: "Observe and record the funeral rites of your village, gaining insight into death customs.", 
     unlocked: true, 
     safe: true,
     autoRepeat: false
@@ -130,7 +145,8 @@ let tasks = [
     cost: { mana: 5 }, 
     description: "Cling to life as purple blight boils lungs and blackens eyes; the godstone stays mute while your parents choke beside you and the orchard withers into ash.", 
     resourceMaxIncrease: { mana: 25 }, 
-    notorietyCost: 5 
+    notorietyCost: 5,
+    yields: { knowledge: 3 }  // ADDED: Knowledge from surviving
   },
   { 
     name: "Reject Divinity", 
@@ -140,7 +156,7 @@ let tasks = [
     completed: false, 
     unlocks: ["Steal Grimoire"], 
     requires: ["Survive Plague"], 
-    cost: { knowledge: 3 }, 
+    cost: { knowledge: 3 },  // Reduced from 5 to 3
     description: "Standing over fresh graves, you spit at the heavens and choose forbidden rites over the gods who ignored your prayers.", 
     resourceMaxIncrease: { knowledge: 10 }, 
     notorietyCost: 10 
@@ -153,8 +169,8 @@ let tasks = [
     completed: false, 
     unlocks: ["Reanimate Crow"], 
     requires: ["Reject Divinity"], 
-    cost: { mana: 5, knowledge: 5 }, 
-    description: "Creep through the abandoned death church chapel, pry a bone-bound grimoire from a priest’s stiff fingers, and feel its pages hum with secrets the gods hid from you.", 
+    cost: { mana: 5, knowledge: 5 },  // Reduced from 5 knowledge to 5
+    description: "Creep through the abandoned death church chapel, pry a bone-bound grimoire from a priest's stiff fingers, and feel its pages hum with secrets the gods hid from you.", 
     notorietyCost: 10 
   },
   { 
@@ -193,7 +209,7 @@ let tasks = [
     description: "Under a dead moon you carve an oath into your palm: master death, unseat the negligent gods, and make them feel every unanswered prayer etched into your scars.", 
     notorietyCost: 10 
   },
-  // The Seed of Ash: Great Choice
+  // The Seed of Ash: Great Choice - EXCLUSIVE CHOICES
   { 
     name: "Meet Ashen Traveler", 
     baseTime: 6, 
@@ -214,11 +230,12 @@ let tasks = [
     unlocks: ["Scholar of Silence"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Accept the cold Canticle of Dust and Bone, vowing to understand why gods fear death more than mortals do.", 
-    yields: { evidence: 3 }, 
+    yields: { evidence: 3, knowledge: 2 },  // ADDED: knowledge yield
     resourceMaxIncrease: { evidence: 20 }, 
     choiceGroup: "SeedChoice", 
     choiceKey: "Book", 
-    safe: true 
+    safe: true,
+    exclusive: true  // MARKED AS EXCLUSIVE
   },
   { 
     name: "Collect Abandoned Scrolls", 
@@ -227,7 +244,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { scrolls: 2, evidence: 1 }, 
+    yields: { scrolls: 2, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
     description: "Scour ruined huts for discarded scrolls, stockpiling fuel for scholarship.", 
     unlocked: false, 
     unlockTask: "Choose the Book", 
@@ -244,11 +261,12 @@ let tasks = [
     unlocks: ["Rally Plague Survivors"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Grip the saint-cutting blade that drinks light, swearing to gather the angry and forgotten into a fist.", 
-    yields: { fury: 5 }, 
+    yields: { fury: 5, knowledge: 1 },  // ADDED: knowledge yield
     resourceMaxIncrease: { fury: 25 }, 
     notorietyCost: 8, 
     choiceGroup: "SeedChoice", 
-    choiceKey: "Blade" 
+    choiceKey: "Blade",
+    exclusive: true  // MARKED AS EXCLUSIVE
   },
   { 
     name: "Scavenge Broken Arms", 
@@ -274,12 +292,13 @@ let tasks = [
     unlocks: ["Assume White Mask"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Take the smooth white mask and promise to infiltrate temples and cities, rotting faith from within.", 
-    yields: { influence: 4 }, 
+    yields: { influence: 4, knowledge: 1 },  // ADDED: knowledge yield
     resourceMaxIncrease: { influence: 20 }, 
     notorietyCost: 2, 
     choiceGroup: "SeedChoice", 
     choiceKey: "Mask", 
-    safe: true 
+    safe: true,
+    exclusive: true  // MARKED AS EXCLUSIVE
   },
   { 
     name: "Choose the Seal", 
@@ -290,11 +309,12 @@ let tasks = [
     unlocks: ["Seek Sealed Master"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Accept the wax seal of the closed eye, swearing a vow to knowledge alone as you follow a hidden master of hatred.", 
-    yields: { voidFavor: 3 }, 
+    yields: { voidFavor: 3, knowledge: 1 },  // ADDED: knowledge yield
     resourceMaxIncrease: { voidFavor: 15 }, 
     notorietyCost: 6, 
     choiceGroup: "SeedChoice", 
-    choiceKey: "Seal" 
+    choiceKey: "Seal",
+    exclusive: true  // MARKED AS EXCLUSIVE
   },
   // Path C: The Mask (Infiltration)
   { 
@@ -305,7 +325,7 @@ let tasks = [
     completed: false, 
     unlocks: ["Enter City Temple"], 
     requires: ["Choose the Mask"], 
-    cost: { knowledge: 4 }, 
+    cost: { knowledge: 4 },  // Reduced from 4 to 4 (unchanged, but now achievable)
     yields: { influence: 5 }, 
     description: "Learn to breathe through porcelain stillness, adopting a new name fit for temple halls.", 
     notorietyCost: 6 
@@ -317,7 +337,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { influence: 4 }, 
+    yields: { influence: 4, knowledge: 1 },  // ADDED: knowledge yield
     description: "Hand out bowls in the temple kitchens, trading mercy for whispers.", 
     unlocked: false, 
     unlockTask: "Assume White Mask", 
@@ -346,7 +366,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { rumors: 4, influence: 1 }, 
+    yields: { rumors: 4, influence: 1, knowledge: 1 },  // ADDED: knowledge yield
     description: "Feed the bazaar with slanted tales that boost your rumor stockpile.", 
     unlocked: false, 
     unlockTask: "Assume White Mask", 
@@ -361,7 +381,7 @@ let tasks = [
     completed: false, 
     unlocks: ["Mimic Liturgies", "Whisper Doubt"], 
     requires: ["Assume White Mask"], 
-    cost: { influence: 4, knowledge: 3 }, 
+    cost: { influence: 4, knowledge: 3 },  // Reduced from 3 to 3 (unchanged)
     yields: { influence: 4 }, 
     description: "Walk among the faithful, mapping their routines and their blind spots beneath stained glass.", 
     notorietyCost: 8 
@@ -373,7 +393,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { influence: 3, evidence: 2 }, 
+    yields: { influence: 3, evidence: 2, knowledge: 1 },  // ADDED: knowledge yield
     description: "Swap rumors with choristers during rehearsals, weaving doubt into the verses.", 
     unlocked: false, 
     unlockTask: "Enter City Temple", 
@@ -481,7 +501,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { voidFavor: 3, entropy: 2 }, 
+    yields: { voidFavor: 3, entropy: 2, knowledge: 1 },  // ADDED: knowledge yield
     description: "Sit before the sealed sigil, letting silence steep until void answers.", 
     unlocked: false, 
     unlockTask: "Seek Sealed Master", 
@@ -509,7 +529,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { voidFavor: 2, entropy: 2, evidence: 1 }, 
+    yields: { voidFavor: 2, entropy: 2, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
     description: "Chart hidden leylines that the gods refuse to sanctify, widening your unseen routes.", 
     unlocked: false, 
     unlockTask: "Walk the Closed Road", 
@@ -579,9 +599,9 @@ let tasks = [
     completed: false, 
     unlocks: ["Calavan Library"], 
     requires: ["Choose the Book"], 
-    cost: { knowledge: 4 }, 
+    cost: { knowledge: 4 },  // Now achievable with early knowledge generation
     yields: { evidence: 2 }, 
-    description: "Embrace the Canticle’s thesis: death is the only constant and gods are parasites; you set out to prove it.", 
+    description: "Embrace the Canticle's thesis: death is the only constant and gods are parasites; you set out to prove it.", 
     notorietyCost: 6 
   },
   { 
@@ -591,7 +611,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { insight: 3, evidence: 1 }, 
+    yields: { insight: 3, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
     description: "Scrawl notes between forbidden lines, sharpening the logic of death.", 
     unlocked: false, 
     unlockTask: "Scholar of Silence", 
@@ -619,7 +639,7 @@ let tasks = [
     proficiency: 0, 
     isActive: false, 
     completed: false, 
-    unlocks: ["Historian’s Case", "Map Necrotic Equations", "Practice Forbidden Annex"], 
+    unlocks: ["Historian's Case", "Map Necrotic Equations", "Practice Forbidden Annex"], 
     requires: ["Scholar of Silence"], 
     cost: { mana: 5, knowledge: 5 }, 
     yields: { knowledge: 3, evidence: 2 }, 
@@ -632,7 +652,7 @@ let tasks = [
     proficiency: 0, 
     isActive: false, 
     completed: false, 
-    unlocks: ["Historian’s Case", "Map Necrotic Equations"], 
+    unlocks: ["Historian's Case", "Map Necrotic Equations"], 
     requires: ["Calavan Library"], 
     cost: { knowledge: 6, evidence: 4 }, 
     yields: { evidence: 3 }, 
@@ -660,7 +680,7 @@ let tasks = [
     proficiency: 0, 
     isActive: false, 
     completed: false, 
-    unlocks: ["Historian’s Case", "Map Necrotic Equations"], 
+    unlocks: ["Historian's Case", "Map Necrotic Equations"], 
     requires: ["Restore Grimoire Bindings"], 
     cost: { mana: 6 }, 
     yields: { scrolls: 2, evidence: 1 }, 
@@ -675,7 +695,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { evidence: 3, influence: 1 }, 
+    yields: { evidence: 3, influence: 1, knowledge: 1 },  // ADDED: knowledge yield
     description: "Corner tired archivists into late-night debates, extracting admissions of unanswered prayers.", 
     unlocked: false, 
     unlockTask: "Calavan Library", 
@@ -683,7 +703,7 @@ let tasks = [
     autoRepeat: false 
   },
   { 
-    name: "Historian’s Case", 
+    name: "Historian's Case", 
     baseTime: 8, 
     proficiency: 0, 
     isActive: false, 
@@ -706,7 +726,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     unlocks: ["Mercenary Company", "Whisper with Ghosts"], 
-    requires: ["Historian’s Case"], 
+    requires: ["Historian's Case"], 
     cost: { mana: 8, knowledge: 4 }, 
     yields: { evidence: 2, fury: 2 }, 
     description: "Travel to the haunted battlefield where a heretic-general was entombed with a fragment of forbidden proof.", 
@@ -722,8 +742,8 @@ let tasks = [
     proficiency: 0, 
     isActive: false, 
     completed: false, 
-    unlocks: ["Feign Acolyte", "Cat Burglar’s Plot"], 
-    requires: ["Historian’s Case"], 
+    unlocks: ["Feign Acolyte", "Cat Burglar's Plot"], 
+    requires: ["Historian's Case"], 
     cost: { mana: 6, knowledge: 6 }, 
     yields: { influence: 2, evidence: 2 }, 
     description: "Slip toward the radiant cathedral vaults where another fragment lies hidden among relics and hymns.", 
@@ -743,7 +763,7 @@ let tasks = [
     requires: ["Field of Weeping Spears"], 
     cost: { mana: 10 }, 
     yields: { fury: 4 }, 
-    description: "Join a rough company to cut through the no-man’s-land, trading ideals for tactics and scars.", 
+    description: "Join a rough company to cut through the no-man's-land, trading ideals for tactics and scars.", 
     notorietyCost: 16 
   },
   { 
@@ -756,7 +776,7 @@ let tasks = [
     requires: ["Field of Weeping Spears"], 
     cost: { mana: 8, knowledge: 4 }, 
     yields: { evidence: 3 }, 
-    description: "Coax spectral guides from the spears, bargaining with the dead to reach the heretic’s tomb unseen.", 
+    description: "Coax spectral guides from the spears, bargaining with the dead to reach the heretic's tomb unseen.", 
     notorietyCost: 13 
   },
   { 
@@ -786,7 +806,7 @@ let tasks = [
     notorietyCost: 8 
   },
   { 
-    name: "Cat Burglar’s Plot", 
+    name: "Cat Burglar's Plot", 
     baseTime: 10, 
     proficiency: 0, 
     isActive: false, 
@@ -805,7 +825,7 @@ let tasks = [
     isActive: false, 
     completed: false, 
     unlocks: ["Axiom of Unmaking"], 
-    requires: ["Feign Acolyte", "Cat Burglar’s Plot"], 
+    requires: ["Feign Acolyte", "Cat Burglar's Plot"], 
     cost: { mana: 10, knowledge: 6, influence: 4 }, 
     yields: { evidence: 5 }, 
     description: "Slip into the Dawn vaults and lift the heresy fragment, heart pounding beneath stained glass.", 
@@ -821,7 +841,7 @@ let tasks = [
     requires: ["Calavan Library"], 
     cost: { knowledge: 8 }, 
     yields: { evidence: 3 }, 
-    description: "Pursue the Canticle’s math: death as cosmic grammar, leading to the need for a Necrotic Singularity.", 
+    description: "Pursue the Canticle's math: death as cosmic grammar, leading to the need for a Necrotic Singularity.", 
     notorietyCost: 9, 
     choiceGroup: "ScholarBranch", 
     choiceKey: "Equations", 
@@ -982,7 +1002,7 @@ let tasks = [
     requires: ["Practice Forbidden Annex"], 
     cost: { mana: 10, knowledge: 8 }, 
     yields: { evidence: 2 }, 
-    description: "Accept the phylactery’s summons to apprentice under lich Xyros, trading freedom for structured power.", 
+    description: "Accept the phylactery's summons to apprentice under lich Xyros, trading freedom for structured power.", 
     notorietyCost: 14, 
     choiceGroup: "AnnexSplit", 
     choiceKey: "Xyros", 
@@ -1015,7 +1035,7 @@ let tasks = [
     requires: ["Defy Dawn Inquisitor"], 
     cost: { mana: 10 }, 
     yields: { fury: 3 }, 
-    description: "Strike first and silence the Dawn’s investigator, accepting the price of becoming a hunted killer.", 
+    description: "Strike first and silence the Dawn's investigator, accepting the price of becoming a hunted killer.", 
     notorietyCost: 20, 
     choiceGroup: "InquisitorOutcome", 
     choiceKey: "Slay", 
@@ -1135,7 +1155,7 @@ let tasks = [
     requires: ["Study Soul-Binding", "Learn Corpse Preservation"], 
     cost: { mana: 15, knowledge: 5 }, 
     yields: { evidence: 2 }, 
-    description: "Lace Malakar’s chalice with silent venom; as he crumbles, you harvest his rings and whispered passwords, proving loyalty only to your vendetta.", 
+    description: "Lace Malakar's chalice with silent venom; as he crumbles, you harvest his rings and whispered passwords, proving loyalty only to your vendetta.", 
     notorietyCost: 18 
   },
   { 
@@ -1173,7 +1193,7 @@ let tasks = [
     unlocks: ["Infiltrate Libraries"], 
     requires: ["Steal Codex of the Veil"], 
     cost: { mana: 15, knowledge: 5 }, 
-    description: "Practice drawing mana from living and dead alike, leeching power the way gods leech belief, preparing to turn faith’s economy on them.", 
+    description: "Practice drawing mana from living and dead alike, leeching power the way gods leech belief, preparing to turn faith's economy on them.", 
     notorietyCost: 12 
   },
   { 
@@ -1268,7 +1288,7 @@ let tasks = [
     requires: ["Scrap for Jagged Steel"], 
     cost: { mana: 6, armaments: 4 }, 
     yields: { armaments: 3, fury: 2 }, 
-    description: "Forge crude plate and blades, letting each clang harden your legion’s resolve.", 
+    description: "Forge crude plate and blades, letting each clang harden your legion's resolve.", 
     resourceMaxIncrease: { armaments: 8, fury: 5 }, 
     notorietyCost: 14 
   },
@@ -1335,7 +1355,7 @@ let tasks = [
     unlocks: ["Confront Dawn Acolyte"], 
     requires: ["Raise Plague Legion"], 
     cost: { mana: 10, fury: 4 }, 
-    description: "Drag your legion to a gleaming shrine, smother its candles with ash, and etch your oath over the gods’ carved names.", 
+    description: "Drag your legion to a gleaming shrine, smother its candles with ash, and etch your oath over the gods' carved names.", 
     notorietyCost: 24 
   },
   { 
@@ -1370,13 +1390,8 @@ let tasks = [
     completed: false, 
     requires: ["Corrupt Historian"], 
     cost: { knowledge: 10 }, 
-    description: "Breathe in dust and blasphemy as you pore over banned tomes, charting a path to divinity’s throat with ink and spite.", 
+    description: "Breathe in dust and blasphemy as you pore over banned tomes, charting a path to divinity's throat with ink and spite.", 
     resourceMaxIncrease: { knowledge: 25 }, 
     safe: true 
   }
 ];
-
-// If developer mode is on, make all actions instant
-if (developerMode) {
-  tasks = tasks.map(t => ({ ...t, baseTime: 0 }));
-}
