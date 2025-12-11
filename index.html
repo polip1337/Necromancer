@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Necromancer's Eternal Ascendancy</title>
+  <title>Necromancer Ascension</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,17 +15,20 @@
     </div>
     <div id="main-content">
       <div id="info">
-        <h2>Necromancer's Eternal Ascendancy</h2>
+        <h2>Necromancer Ascension</h2>
         <p id="loop">Cycle: 1</p>
-        <p id="notoriety">Notoriety: 0/100</p>
-        <div id="notoriety-bar"><div id="notoriety-progress"></div></div>
+        <p id="evil">Evil: 0/100</p>
+        <p id="infamy">Infamy: 0</p>
+        <div id="evil-bar"><div id="evil-progress"></div></div>
         <p id="status">Begin your path to eternal dominion!</p>
       </div>
       <div id="tabs">
         <button id="tab-tasks" class="tab-button active">Tasks</button>
         <button id="tab-paths" class="tab-button">Paths & History</button>
+        <button id="tab-combat" class="tab-button">Combat</button>
+        <button id="tab-minions" class="tab-button">Minions</button>
       </div>
-      <div id="board" class="tab-panel active">
+      <div id="board" class="tab-panel">
         <div id="task-list">
           <h3>Story Tasks</h3>
         </div>
@@ -39,6 +42,14 @@
       <div id="path-panel" class="tab-panel">
         <h3>Path History</h3>
         <div id="path-history"></div>
+      </div>
+      <div id="combat-panel" class="tab-panel">
+        <h3>Combat</h3>
+        <div id="combat-content"></div>
+      </div>
+      <div id="minions-panel" class="tab-panel">
+        <h3>Minions</h3>
+        <div id="minions-content"></div>
       </div>
       <div id="log"></div>
     </div>
@@ -86,6 +97,25 @@
     </div>
   </div>
   <script src="data.js"></script>
+  <script src="scholar.js"></script>
+  <script src="blade.js"></script>
+  <script src="mask.js"></script>
+  <script src="seal.js"></script>
+  <script>
+    // Merge route tasks into main tasks array
+    if (typeof scholarTasks !== 'undefined') {
+      tasks = tasks.concat(scholarTasks);
+    }
+    if (typeof bladeTasks !== 'undefined') {
+      tasks = tasks.concat(bladeTasks);
+    }
+    if (typeof maskTasks !== 'undefined') {
+      tasks = tasks.concat(maskTasks);
+    }
+    if (typeof sealTasks !== 'undefined') {
+      tasks = tasks.concat(sealTasks);
+    }
+  </script>
   <script>
     let loopCount = 1;
     let currentTask = null;
@@ -106,6 +136,18 @@
       choiceSelections: {},
       automation: {}
     };
+    let combatState = {
+      currentEnemy: null,
+      enemyHealth: 0,
+      enemyMaxHealth: 0,
+      playerHealth: 100,
+      playerMaxHealth: 100,
+      combatActive: false,
+      infamyThreshold: 80,
+      infamy: 0
+    };
+    let minions = [];
+    let minimizedNodes = {};
     const baseResources = JSON.parse(JSON.stringify(resources));
 
     // Debug logging helper with line numbers
@@ -123,6 +165,8 @@
       renderTaskList();
       renderUpgradeList();
       renderPathLog();
+      renderCombatPanel();
+      renderMinionsPanel();
       updateResourcesDisplay();
       setupOptionsModal();
       setupTabs();
@@ -137,10 +181,10 @@
         let progressBar = document.getElementById(`progress-${currentTask}`);
         if (progressBar) progressBar.style.width = `${progressPercent}%`;
         
-        // Notoriety progression mode: 1 per second during tasks
-        if (settings.notorietyTaskMode && resources.notoriety) {
-          resources.notoriety.value = Math.min(100, resources.notoriety.value + (1 / 60));
-          updateNotorietyDisplay();
+        // Evil progression mode: 1 per second during tasks
+        if (settings.notorietyTaskMode && resources.evil) {
+          resources.evil.value = Math.min(100, resources.evil.value + (1 / 60));
+          updateEvilDisplay();
         }
         
         if (taskProgress >= getTaskTime(task)) {
@@ -148,10 +192,24 @@
           completeTask();
         }
       }
-      if (resources.notoriety && resources.notoriety.value >= 100) {
-        debugLog("Notoriety reached 100, ending loop", 97);
+      
+      // Infamy generation from Evil
+      if (resources.evil && resources.evil.value > 0) {
+        combatState.infamy = Math.min(200, combatState.infamy + (resources.evil.value * 0.1 / 60));
+        updateInfamyDisplay();
+        checkCombatThresholds();
+      }
+      
+      if (resources.evil && resources.evil.value >= 100) {
+        debugLog("Evil reached 100, ending loop", 97);
         endLoop();
       }
+      
+      // Process resource interactions
+      processResourceInteractions();
+      
+      // Process minion automation
+      processMinionAutomation();
       if (frameCount % 600 === 0) { // Every 10 seconds
         debugLog("Auto-saving game", 101);
         saveGame();
@@ -176,7 +234,9 @@
         statusMessage,
         taskStartTime,
         settings,
-        pathLog
+        pathLog,
+        combatState,
+        minions
       };
       localStorage.setItem('necromancerGame', JSON.stringify(gameState));
       lastSaveTime = frameCount / 60;
@@ -206,6 +266,8 @@
           upgrades = gameState.upgrades || upgrades;
           tasks = gameState.tasks || tasks;
           pathLog = gameState.pathLog || pathLog;
+          combatState = gameState.combatState || combatState;
+          minions = gameState.minions || [];
           
           // ensure pathLog sub-objects exist
           pathLog.completions = pathLog.completions || {};
@@ -235,7 +297,8 @@
           settings = gameState.settings || settings;
           
           updateLoopDisplay();
-          updateNotorietyDisplay();
+          updateEvilDisplay();
+          updateInfamyDisplay();
           updateLog();
           loadSettings();
           debugLog("Game loaded successfully", 189);
@@ -447,6 +510,8 @@
               pathLog.completions = pathLog.completions || {};
               pathLog.choiceSelections = pathLog.choiceSelections || {};
               pathLog.automation = pathLog.automation || {};
+              combatState = gameState.combatState || combatState;
+              minions = gameState.minions || [];
               
               tasks.forEach((task, index) => {
                 if (task.repeatable) {
@@ -464,7 +529,8 @@
               renderPathLog();
               updateResourcesDisplay();
               updateLoopDisplay();
-              updateNotorietyDisplay();
+              updateEvilDisplay();
+              updateInfamyDisplay();
               updateLog();
               modal.style.display = 'none';
               debugLog("Save file imported successfully", 416);
@@ -491,28 +557,47 @@
       debugLog("Setting up tabs", 437);
       const tabTasks = document.getElementById("tab-tasks");
       const tabPaths = document.getElementById("tab-paths");
+      const tabCombat = document.getElementById("tab-combat");
+      const tabMinions = document.getElementById("tab-minions");
       const board = document.getElementById("board");
       const pathPanel = document.getElementById("path-panel");
+      const combatPanel = document.getElementById("combat-panel");
+      const minionsPanel = document.getElementById("minions-panel");
       
       const activateTab = (tabName) => {
+        // Remove active from all tabs and panels
+        [tabTasks, tabPaths, tabCombat, tabMinions].forEach(tab => tab.classList.remove("active"));
+        [board, pathPanel, combatPanel, minionsPanel].forEach(panel => panel.classList.remove("active"));
+        
         if (tabName === "tasks") {
           tabTasks.classList.add("active");
-          tabPaths.classList.remove("active");
           board.classList.add("active");
-          pathPanel.classList.remove("active");
           debugLog("Switched to Tasks tab", 449);
-        } else {
+        } else if (tabName === "paths") {
           tabPaths.classList.add("active");
-          tabTasks.classList.remove("active");
           pathPanel.classList.add("active");
-          board.classList.remove("active");
           renderPathLog();
           debugLog("Switched to Paths tab", 455);
+        } else if (tabName === "combat") {
+          tabCombat.classList.add("active");
+          combatPanel.classList.add("active");
+          renderCombatPanel();
+          debugLog("Switched to Combat tab", 456);
+        } else if (tabName === "minions") {
+          tabMinions.classList.add("active");
+          minionsPanel.classList.add("active");
+          renderMinionsPanel();
+          debugLog("Switched to Minions tab", 457);
         }
       };
       
       tabTasks.addEventListener('click', () => activateTab("tasks"));
       tabPaths.addEventListener('click', () => activateTab("paths"));
+      tabCombat.addEventListener('click', () => activateTab("combat"));
+      tabMinions.addEventListener('click', () => activateTab("minions"));
+      
+      // Initialize with Tasks tab active
+      activateTab("tasks");
     }
 
     function renderTaskList() {
@@ -545,8 +630,10 @@
           }
         }
         
+        // CHANGE: For repeatable/resource tasks, only show if uses remain (hasCompletions)
+        let hasCompletions = !task.maxCompletions || task.completionsThisLoop < task.maxCompletions;
         let isVisible = !isHiddenByExclusivity && (task.repeatable ? 
-          (task.unlocked || !task.unlockTask) : 
+          ((task.unlocked || !task.unlockTask) && hasCompletions) : 
           (!task.completed && (!task.requires || task.requires.every(req => 
             tasks.find(t => t.name === req).completed
           ))));
@@ -644,7 +731,7 @@
             let shouldShowButton = !task.repeatable || !task.minimized;
             
             if (shouldShowButton) {
-              let btn = createButton(`Start ${task.name}`);
+              let btn = createButton(`${task.name}`);
               btn.elt.style.marginTop = "8px";
               btn.elt.id = `button-${index}`;
               
@@ -858,6 +945,17 @@
           card.appendChild(toggle);
         }
         
+        // Add minimize button to each node
+        const minimizeBtn = document.createElement('button');
+        minimizeBtn.className = 'minimize-tree-btn';
+        minimizeBtn.innerText = minimizedNodes[node.name] ? "+" : "−";
+        minimizeBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          minimizedNodes[node.name] = !minimizedNodes[node.name];
+          renderPathLog();
+        });
+        card.prepend(minimizeBtn);
+
         container.appendChild(card);
         
         // Sort children: completed first, then by name
@@ -1031,17 +1129,13 @@
       if (task.choiceGroup) {
         pathLog.choiceSelections[task.choiceGroup] = task.choiceKey;
         debugLog(`Choice made: ${task.choiceGroup} = ${task.choiceKey}`, 934);
-        
-        // If this is a SeedChoice, mark other SeedChoice tasks as completed to prevent selection
-        if (task.choiceGroup === "SeedChoice") {
-          debugLog("SeedChoice detected, locking other SeedChoice options", 938);
-          tasks.forEach(t => {
-            if (t.choiceGroup === "SeedChoice" && t.name !== task.name) {
-              t.completed = true;
-              debugLog(`Locked ${t.name} due to exclusive SeedChoice`, 942);
-            }
-          });
-        }
+        // Now generalize to all choiceGroups
+        tasks.forEach(t => {
+          if (t.choiceGroup === task.choiceGroup && t.name !== task.name) {
+            t.completed = true;
+            debugLog(`Locked ${t.name} due to exclusive choice group ${task.choiceGroup}`, 942);
+          }
+        });
       }
       
       if (!task.repeatable) {
@@ -1058,11 +1152,41 @@
           resources.knowledge.value = Math.min(resources.knowledge.value + 3, resources.knowledge.max);
           debugLog("Knowledge unlocked and increased", 958);
         }
+        if (task.name === "Unlock Control") {
+          resources.control.unlocked = true;
+          debugLog("Control unlocked", 959);
+        }
       }
       
       if (task.maxCompletions) {
         task.completionsThisLoop++;
         debugLog(`Completions this loop: ${task.completionsThisLoop}/${task.maxCompletions}`, 963);
+      }
+      
+      // Create minion if task specifies
+      if (task.createsMinion) {
+        const controlUsed = minions.reduce((sum, m) => sum + m.controlCost, 0);
+        const controlMax = resources.control?.max || 0;
+        if (controlUsed + task.createsMinion.controlCost <= controlMax) {
+          // Scale minion power based on story progression
+          const storyTasksCompleted = tasks.filter(t => !t.repeatable && t.completed).length;
+          const scalingFactor = 1 + (storyTasksCompleted * 0.1); // 10% per story task
+          const scaledPower = Math.floor(task.createsMinion.power * scalingFactor);
+          
+          const scaledMinion = {
+            ...task.createsMinion,
+            power: scaledPower
+          };
+          
+          minions.push(scaledMinion);
+          logMessages.unshift(`Created ${task.createsMinion.name} (Power: ${scaledPower})!`);
+          if (logMessages.length > 10) logMessages.pop();
+          renderMinionsPanel();
+          debugLog(`Created minion: ${task.createsMinion.name} with power ${scaledPower}`, 964);
+        } else {
+          logMessages.unshift(`Not enough control to create ${task.createsMinion.name}.`);
+          if (logMessages.length > 10) logMessages.pop();
+        }
       }
       
       if (task.yields) {
@@ -1083,9 +1207,17 @@
       }
       
       if (task.notorietyCost && !task.safe && !settings.notorietyTaskMode) {
-        resources.notoriety.value = Math.max(0, Math.min(100, resources.notoriety.value + task.notorietyCost));
-        updateNotorietyDisplay();
-        debugLog(`Notoriety changed by ${task.notorietyCost}`, 986);
+        if (resources.evil) {
+          resources.evil.value = Math.max(0, Math.min(100, resources.evil.value + task.notorietyCost));
+          updateEvilDisplay();
+          debugLog(`Evil changed by ${task.notorietyCost}`, 986);
+        }
+      }
+      
+      // Add flavor message after story task completion
+      if (!task.repeatable && task.flavorMessage) {
+        logMessages.unshift(task.flavorMessage);
+        if (logMessages.length > 10) logMessages.pop();
       }
       
       tasks.forEach(t => {
@@ -1204,7 +1336,9 @@
     function endLoop() {
       debugLog("Ending loop", 1098);
       loopCount++;
-      resources.notoriety.value = 0;
+      if (resources.evil) {
+        resources.evil.value = 0;
+      }
       currentTask = null;
       taskProgress = 0;
       for (let task of tasks) {
@@ -1224,7 +1358,7 @@
       if (logMessages.length > 10) logMessages.pop();
       updateLog();
       updateLoopDisplay();
-      updateNotorietyDisplay();
+      updateEvilDisplay();
       renderTaskList();
       renderUpgradeList();
       saveGame();
@@ -1236,12 +1370,271 @@
       debugLog(`Updated loop display: ${loopCount}`, 1127);
     }
 
-    function updateNotorietyDisplay() {
-      if (resources.notoriety) {
-        document.getElementById("notoriety").innerText = `Notoriety: ${Math.floor(resources.notoriety.value)}/100`;
-        document.getElementById("notoriety-progress").style.width = `${Math.max(0, Math.min(100, (resources.notoriety.value / 100) * 100))}%`;
-        debugLog(`Updated notoriety display: ${Math.floor(resources.notoriety.value)}/100`, 1135);
+    function updateEvilDisplay() {
+      if (resources.evil) {
+        document.getElementById("evil").innerText = `Evil: ${Math.floor(resources.evil.value)}/100`;
+        document.getElementById("evil-progress").style.width = `${Math.max(0, Math.min(100, (resources.evil.value / 100) * 100))}%`;
+        debugLog(`Updated evil display: ${Math.floor(resources.evil.value)}/100`, 1135);
       }
+    }
+    
+    function updateInfamyDisplay() {
+      document.getElementById("infamy").innerText = `Infamy: ${Math.floor(combatState.infamy)}`;
+    }
+    
+    function checkCombatThresholds() {
+      if (!combatState.combatActive && combatState.infamy >= combatState.infamyThreshold) {
+        startCombat();
+      }
+    }
+    
+    function startCombat() {
+      combatState.combatActive = true;
+      let enemyType = "";
+      let health = 0;
+      
+      if (combatState.infamy >= 200) {
+        enemyType = "All Gods";
+        health = 5000;
+      } else if (combatState.infamy >= 150) {
+        enemyType = "A God";
+        health = 2000;
+      } else if (combatState.infamy >= 100) {
+        enemyType = "Coalition of Countries";
+        health = 1000;
+      } else if (combatState.infamy >= 90) {
+        enemyType = "King";
+        health = 500;
+      } else {
+        enemyType = "Mob of Villagers";
+        health = 200;
+      }
+      
+      combatState.currentEnemy = enemyType;
+      combatState.enemyHealth = health;
+      combatState.enemyMaxHealth = health;
+      renderCombatPanel();
+      logMessages.unshift(`Combat started: ${enemyType} attacks!`);
+      if (logMessages.length > 10) logMessages.pop();
+      updateLog();
+    }
+    
+    function renderCombatPanel() {
+      const panel = document.getElementById("combat-content");
+      if (!panel) return;
+      
+      if (!combatState.combatActive) {
+        panel.innerHTML = `
+          <div class="combat-info">
+            <p>No active combat.</p>
+            <p>Infamy: ${Math.floor(combatState.infamy)}/${combatState.infamyThreshold}</p>
+            <p>Next threshold: ${getNextEnemyName()}</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const healthPercent = (combatState.enemyHealth / combatState.enemyMaxHealth) * 100;
+      const playerHealthPercent = (combatState.playerHealth / combatState.playerMaxHealth) * 100;
+      
+      panel.innerHTML = `
+        <div class="combat-info">
+          <h4>${combatState.currentEnemy}</h4>
+          <div class="health-bar">
+            <div class="health-bar-label">Enemy Health</div>
+            <div class="health-bar-container">
+              <div class="health-bar-fill enemy" style="width: ${healthPercent}%"></div>
+            </div>
+            <div class="health-bar-text">${Math.floor(combatState.enemyHealth)}/${combatState.enemyMaxHealth}</div>
+          </div>
+          <div class="health-bar">
+            <div class="health-bar-label">Your Health</div>
+            <div class="health-bar-container">
+              <div class="health-bar-fill player" style="width: ${playerHealthPercent}%"></div>
+            </div>
+            <div class="health-bar-text">${Math.floor(combatState.playerHealth)}/${combatState.playerMaxHealth}</div>
+          </div>
+          <button id="attack-button">Attack</button>
+        </div>
+      `;
+      
+      const attackBtn = document.getElementById("attack-button");
+      if (attackBtn) {
+        attackBtn.addEventListener('click', performAttack);
+      }
+    }
+    
+    function getNextEnemyName() {
+      if (combatState.infamyThreshold >= 200) return "All Gods";
+      if (combatState.infamyThreshold >= 150) return "A God";
+      if (combatState.infamyThreshold >= 100) return "Coalition of Countries";
+      if (combatState.infamyThreshold >= 90) return "King";
+      return "Mob of Villagers";
+    }
+    
+    function performAttack() {
+      if (!combatState.combatActive) return;
+      
+      // Calculate damage based on path and resources
+      let damage = calculateCombatDamage();
+      combatState.enemyHealth = Math.max(0, combatState.enemyHealth - damage);
+      
+      // Enemy counterattack
+      let enemyDamage = calculateEnemyDamage();
+      combatState.playerHealth = Math.max(0, combatState.playerHealth - enemyDamage);
+      
+      renderCombatPanel();
+      
+      if (combatState.enemyHealth <= 0) {
+        winCombat();
+      } else if (combatState.playerHealth <= 0) {
+        loseCombat();
+      }
+    }
+    
+    function calculateCombatDamage() {
+      let baseDamage = 10;
+      
+      // Path-specific damage calculations
+      const seedChoice = pathLog.choiceSelections["SeedChoice"];
+      
+      if (seedChoice === "Blade") {
+        baseDamage += (resources.fury?.value || 0) * 0.5;
+        baseDamage += (resources.armaments?.value || 0) * 2;
+        baseDamage += getMinionCombatPower();
+      } else if (seedChoice === "Book") {
+        baseDamage += (resources.knowledge?.value || 0) * 0.3;
+        baseDamage += (resources.evidence?.value || 0) * 1.5;
+      } else if (seedChoice === "Mask") {
+        baseDamage += (resources.influence?.value || 0) * 0.4;
+        baseDamage += (resources.secrets?.value || 0) * 1.2;
+      } else if (seedChoice === "Seal") {
+        baseDamage += (resources.voidFavor?.value || 0) * 0.6;
+        baseDamage += (resources.entropy?.value || 0) * 2;
+      }
+      
+      return Math.floor(baseDamage);
+    }
+    
+    function calculateEnemyDamage() {
+      let baseDamage = 5;
+      if (combatState.infamy >= 200) baseDamage = 50;
+      else if (combatState.infamy >= 150) baseDamage = 30;
+      else if (combatState.infamy >= 100) baseDamage = 20;
+      else if (combatState.infamy >= 90) baseDamage = 10;
+      
+      // Minions can absorb damage
+      const minionAbsorption = getMinionAbsorption();
+      return Math.max(1, Math.floor(baseDamage - minionAbsorption));
+    }
+    
+    function winCombat() {
+      combatState.combatActive = false;
+      combatState.infamy = 0;
+      
+      // Increase threshold
+      if (combatState.infamyThreshold === 80) combatState.infamyThreshold = 90;
+      else if (combatState.infamyThreshold === 90) combatState.infamyThreshold = 100;
+      else if (combatState.infamyThreshold === 100) combatState.infamyThreshold = 150;
+      else if (combatState.infamyThreshold === 150) combatState.infamyThreshold = 200;
+      else if (combatState.infamyThreshold === 200) combatState.infamyThreshold = 250;
+      
+      combatState.playerHealth = combatState.playerMaxHealth;
+      logMessages.unshift(`Victory! ${combatState.currentEnemy} defeated!`);
+      if (logMessages.length > 10) logMessages.pop();
+      updateLog();
+      renderCombatPanel();
+    }
+    
+    function loseCombat() {
+      combatState.combatActive = false;
+      logMessages.unshift(`Defeat! ${combatState.currentEnemy} overwhelmed you.`);
+      if (logMessages.length > 10) logMessages.pop();
+      updateLog();
+      renderCombatPanel();
+    }
+    
+    function renderMinionsPanel() {
+      const panel = document.getElementById("minions-content");
+      if (!panel) return;
+      
+      const controlUsed = minions.reduce((sum, m) => sum + m.controlCost, 0);
+      const controlMax = resources.control?.max || 0;
+      
+      panel.innerHTML = `
+        <div class="minions-info">
+          <h4>Control: ${controlUsed}/${controlMax}</h4>
+          <div id="minions-list"></div>
+        </div>
+      `;
+      
+      const list = document.getElementById("minions-list");
+      if (minions.length === 0) {
+        list.innerHTML = "<p>No minions yet.</p>";
+      } else {
+        list.innerHTML = minions.map((minion, index) => `
+          <div class="minion-card">
+            <div class="minion-name">${minion.name}</div>
+            <div class="minion-stats">Power: ${minion.power}, Control: ${minion.controlCost}</div>
+            <button onclick="dismissMinion(${index})">Dismiss</button>
+          </div>
+        `).join("");
+      }
+    }
+    
+    window.dismissMinion = function(index) {
+      minions.splice(index, 1);
+      renderMinionsPanel();
+      saveGame();
+    };
+    
+    function getMinionCombatPower() {
+      return minions.reduce((sum, m) => sum + m.power, 0);
+    }
+    
+    function getMinionAbsorption() {
+      return minions.reduce((sum, m) => sum + (m.power * 0.1), 0);
+    }
+    
+    function processMinionAutomation() {
+      if (currentTask !== null) return;
+      
+      minions.forEach(minion => {
+        if (minion.automates && minion.automates.length > 0) {
+          minion.automates.forEach(taskName => {
+            const task = tasks.find(t => t.name === taskName);
+            if (task && !task.completed && checkResources(task)) {
+              const taskIndex = tasks.indexOf(task);
+              if (taskIndex !== -1 && Math.random() < 0.01) { // 1% chance per frame
+                startTask(taskIndex);
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    function processResourceInteractions() {
+      if (!resourceInteractions) return;
+      
+      resourceInteractions.forEach(interaction => {
+        const source = resources[interaction.source];
+        if (!source || !source.unlocked) return;
+        
+        if (interaction.type === "passiveGain") {
+          const target = resources[interaction.target];
+          if (target && target.unlocked) {
+            const gain = source.value * interaction.amountPerUnit / 60;
+            target.value = Math.min(target.max, target.value + gain);
+          }
+        } else if (interaction.type === "maxIncrease") {
+          const target = resources[interaction.target];
+          if (target && target.unlocked) {
+            const increase = source.value * interaction.amountPerUnit;
+            target.max = (target.baseMax || target.max) + increase;
+          }
+        }
+      });
     }
 
     function updateStatus() {

@@ -1,35 +1,108 @@
 let resources = {
+  // Shared resources
   mana: { value: 0, max: 100, unlocked: true },
   knowledge: { value: 0, max: 50, unlocked: false },
-  notoriety: { value: 0, max: 100, unlocked: true },
+  evil: { value: 0, max: 100, unlocked: true },
+  control: { value: 0, max: 10, unlocked: false },     // Limits minion count
+  
+  // Scholar path (10+ resources)
   evidence: { value: 0, max: 40, unlocked: false },    // Scholar path proof
-  fury: { value: 0, max: 60, unlocked: false },        // Blade path rage/forces
-  influence: { value: 0, max: 40, unlocked: false },   // Mask path cover/favor
-  voidFavor: { value: 0, max: 25, unlocked: false },   // Seal path eldritch backing
   insight: { value: 0, max: 25, unlocked: false },     // Scholar depth
-  armaments: { value: 0, max: 25, unlocked: false },   // Blade equipment/discipline
-  secrets: { value: 0, max: 25, unlocked: false },     // Mask gathered intel
-  entropy: { value: 0, max: 20, unlocked: false },     // Seal path void charge
   scrolls: { value: 0, max: 20, unlocked: false },     // Scholar passive proof
   grimoires: { value: 0, max: 10, unlocked: false },   // Scholar rare tomes
-  rumors: { value: 0, max: 25, unlocked: false },      // Mask soft power
-  covers: { value: 0, max: 15, unlocked: false },      // Mask layered identities
+  theorems: { value: 0, max: 15, unlocked: false },    // Scholar mathematical proofs
+  archives: { value: 0, max: 12, unlocked: false },     // Scholar library access
+  citations: { value: 0, max: 30, unlocked: false },    // Scholar references
+  annotations: { value: 0, max: 25, unlocked: false }, // Scholar notes
+  fragments: { value: 0, max: 20, unlocked: false },   // Scholar document pieces
+  codices: { value: 0, max: 8, unlocked: false },       // Scholar bound volumes
+  axioms: { value: 0, max: 5, unlocked: false },       // Scholar fundamental truths
+  
+  // Blade path (10+ resources)
+  fury: { value: 0, max: 60, unlocked: false },        // Blade path rage/forces
+  armaments: { value: 0, max: 25, unlocked: false },   // Blade equipment/discipline
   morale: { value: 0, max: 30, unlocked: false },      // Blade cohesion
   supplies: { value: 0, max: 30, unlocked: false },    // Blade logistics
+  discipline: { value: 0, max: 25, unlocked: false },  // Blade training
+  recruits: { value: 0, max: 40, unlocked: false },     // Blade soldiers
+  banners: { value: 0, max: 15, unlocked: false },      // Blade symbols
+  tactics: { value: 0, max: 20, unlocked: false },      // Blade strategies
+  wounds: { value: 0, max: 30, unlocked: false },      // Blade battle scars
+  honor: { value: 0, max: 20, unlocked: false },        // Blade reputation
+  steel: { value: 0, max: 35, unlocked: false },        // Blade weapons
+  
+  // Mask path (10+ resources)
+  influence: { value: 0, max: 40, unlocked: false },   // Mask path cover/favor
+  secrets: { value: 0, max: 25, unlocked: false },     // Mask gathered intel
+  rumors: { value: 0, max: 25, unlocked: false },      // Mask soft power
+  covers: { value: 0, max: 15, unlocked: false },      // Mask layered identities
+  favors: { value: 0, max: 30, unlocked: false },      // Mask owed debts
+  networks: { value: 0, max: 20, unlocked: false },    // Mask connections
+  masks: { value: 0, max: 12, unlocked: false },       // Mask physical disguises
+  whispers: { value: 0, max: 35, unlocked: false },    // Mask information
+  blackmail: { value: 0, max: 18, unlocked: false },   // Mask leverage
+  strings: { value: 0, max: 25, unlocked: false },     // Mask puppet control
+  shadows: { value: 0, max: 20, unlocked: false },      // Mask hidden presence
+  
+  // Seal path (10+ resources)
+  voidFavor: { value: 0, max: 25, unlocked: false },   // Seal path eldritch backing
+  entropy: { value: 0, max: 20, unlocked: false },     // Seal path void charge
   sigils: { value: 0, max: 20, unlocked: false },      // Seal glyph charges
-  voidShards: { value: 0, max: 12, unlocked: false }   // Seal condensed void
+  voidShards: { value: 0, max: 12, unlocked: false },   // Seal condensed void
+  silence: { value: 0, max: 25, unlocked: false },      // Seal quiet power
+  bindings: { value: 0, max: 15, unlocked: false },     // Seal oaths
+  rifts: { value: 0, max: 10, unlocked: false },        // Seal portals
+  voidWhispers: { value: 0, max: 18, unlocked: false }, // Seal void messages
+  brands: { value: 0, max: 12, unlocked: false },       // Seal marks
+  emptiness: { value: 0, max: 30, unlocked: false },    // Seal void essence
+  closedEye: { value: 0, max: 8, unlocked: false }       // Seal master favor
 };
 
 // Passive and cross-resource interactions (consumed by engine for per-tick effects or caps)
 let resourceInteractions = [
+  // Scholar interactions
   { source: "scrolls", type: "passiveGain", target: "knowledge", amountPerUnit: 0.01 },
   { source: "grimoires", type: "maxIncrease", target: "knowledge", amountPerUnit: 10 },
+  { source: "theorems", type: "passiveGain", target: "evidence", amountPerUnit: 0.02 },
+  { source: "archives", type: "maxIncrease", target: "scrolls", amountPerUnit: 2 },
+  { source: "citations", type: "passiveGain", target: "theorems", amountPerUnit: 0.01 },
+  { source: "annotations", type: "maxIncrease", target: "insight", amountPerUnit: 1 },
+  { source: "fragments", type: "passiveGain", target: "evidence", amountPerUnit: 0.015 },
+  { source: "codices", type: "maxIncrease", target: "grimoires", amountPerUnit: 1 },
+  { source: "axioms", type: "maxIncrease", target: "knowledge", amountPerUnit: 15 },
+  
+  // Blade interactions
   { source: "rumors", type: "passiveGain", target: "influence", amountPerUnit: 0.05 },
-  { source: "covers", type: "maxIncrease", target: "influence", amountPerUnit: 5 },
-  { source: "morale", type: "yieldMultiplier", target: "fury", multiplierPerUnit: 0.01 },
+  { source: "morale", type: "passiveGain", target: "fury", amountPerUnit: 0.02 },
   { source: "supplies", type: "maxIncrease", target: "armaments", amountPerUnit: 1 },
+  { source: "discipline", type: "maxIncrease", target: "morale", amountPerUnit: 2 },
+  { source: "recruits", type: "passiveGain", target: "fury", amountPerUnit: 0.01 },
+  { source: "banners", type: "maxIncrease", target: "morale", amountPerUnit: 3 },
+  { source: "tactics", type: "passiveGain", target: "discipline", amountPerUnit: 0.01 },
+  { source: "wounds", type: "passiveGain", target: "fury", amountPerUnit: 0.015 },
+  { source: "honor", type: "maxIncrease", target: "recruits", amountPerUnit: 2 },
+  { source: "steel", type: "maxIncrease", target: "armaments", amountPerUnit: 1.5 },
+  
+  // Mask interactions
+  { source: "covers", type: "maxIncrease", target: "influence", amountPerUnit: 5 },
+  { source: "favors", type: "passiveGain", target: "influence", amountPerUnit: 0.02 },
+  { source: "networks", type: "maxIncrease", target: "secrets", amountPerUnit: 2 },
+  { source: "masks", type: "maxIncrease", target: "covers", amountPerUnit: 1 },
+  { source: "whispers", type: "passiveGain", target: "secrets", amountPerUnit: 0.02 },
+  { source: "blackmail", type: "passiveGain", target: "favors", amountPerUnit: 0.015 },
+  { source: "strings", type: "maxIncrease", target: "influence", amountPerUnit: 3 },
+  { source: "shadows", type: "passiveGain", target: "secrets", amountPerUnit: 0.01 },
+  
+  // Seal interactions
   { source: "sigils", type: "passiveGain", target: "voidFavor", amountPerUnit: 0.05 },
-  { source: "voidShards", type: "maxIncrease", target: "entropy", amountPerUnit: 2 }
+  { source: "voidShards", type: "maxIncrease", target: "entropy", amountPerUnit: 2 },
+  { source: "silence", type: "passiveGain", target: "entropy", amountPerUnit: 0.02 },
+  { source: "bindings", type: "maxIncrease", target: "voidFavor", amountPerUnit: 2 },
+  { source: "rifts", type: "passiveGain", target: "voidShards", amountPerUnit: 0.01 },
+  { source: "voidWhispers", type: "passiveGain", target: "voidFavor", amountPerUnit: 0.015 },
+  { source: "brands", type: "maxIncrease", target: "sigils", amountPerUnit: 1 },
+  { source: "emptiness", type: "maxIncrease", target: "entropy", amountPerUnit: 1.5 },
+  { source: "closedEye", type: "maxIncrease", target: "voidFavor", amountPerUnit: 5 }
 ];
 
 let upgrades = {
@@ -76,7 +149,7 @@ let tasks = [
     unlocks: ["Festival Night"], 
     description: "Walk between sunlit rows, learning patience as your father coaxes life from soil while the gods watch idly from their distant seats.", 
     safe: true,
-    yields: { knowledge: 1 }  // ADDED: Early knowledge generation
+
   },
   { 
     name: "Festival Night", 
@@ -84,11 +157,11 @@ let tasks = [
     proficiency: 0, 
     isActive: false, 
     completed: false, 
-    unlocks: ["Survive Plague"], 
+    unlocks: ["Survive Plague","Study Funeral Rites","Salvage Altar Shards","Quiet Grief Vigils"], 
     requires: ["Tend Orchard with Father"], 
     description: "Lanterns bloom over the square, your mother's laugh mingles with flutes, and you offer a prayer at the godstone that will go tragically unanswered.", 
     safe: true,
-    yields: { knowledge: 2 }  // ADDED: Early knowledge generation
+
   },
   { 
     name: "Salvage Altar Shards", 
@@ -97,9 +170,9 @@ let tasks = [
     isActive: false, 
     completed: false, 
     repeatable: true, 
-    yields: { mana: 4, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
+    yields: { mana: 4, evidence: 1,},
     description: "Collect broken godstone chips after the festival to feed your first rites.", 
-    unlocked: true, 
+    unlocked: false, 
     safe: true,
     autoRepeat: false
   },
@@ -111,15 +184,15 @@ let tasks = [
     completed: false, 
     repeatable: true, 
     yields: { mana: 3, knowledge: 1 },  // ADDED: knowledge yield
-    notorietyCost: -6, 
+    notorietyCost: -6,
+    flavorMessage: "The quiet vigils have cooled rumors, but your patience grows thin.", 
     maxCompletions: 3, 
     completionsThisLoop: 0, 
     description: "Keep silent watch over the pyres, letting rumor cool while you gather strength.", 
-    unlocked: true, 
+    unlocked: false, 
     safe: true,
     autoRepeat: false
   },
-  // NEW: Early knowledge generation task
   { 
     name: "Study Funeral Rites", 
     baseTime: 6, 
@@ -129,7 +202,7 @@ let tasks = [
     repeatable: true, 
     yields: { knowledge: 2, mana: 1 }, 
     description: "Observe and record the funeral rites of your village, gaining insight into death customs.", 
-    unlocked: true, 
+    unlocked: false, 
     safe: true,
     autoRepeat: false
   },
@@ -146,7 +219,8 @@ let tasks = [
     description: "Cling to life as purple blight boils lungs and blackens eyes; the godstone stays mute while your parents choke beside you and the orchard withers into ash.", 
     resourceMaxIncrease: { mana: 25 }, 
     notorietyCost: 5,
-    yields: { knowledge: 3 }  // ADDED: Knowledge from surviving
+    yields: { knowledge: 3 },
+    flavorMessage: "You survived where others perished. The gods' silence echoes louder than any prayer."
   },
   { 
     name: "Reject Divinity", 
@@ -159,7 +233,8 @@ let tasks = [
     cost: { knowledge: 3 },  // Reduced from 5 to 3
     description: "Standing over fresh graves, you spit at the heavens and choose forbidden rites over the gods who ignored your prayers.", 
     resourceMaxIncrease: { knowledge: 10 }, 
-    notorietyCost: 10 
+    notorietyCost: 10,
+    flavorMessage: "The rejection is complete. You have chosen a path the gods fear to acknowledge."
   },
   { 
     name: "Steal Grimoire", 
@@ -171,7 +246,8 @@ let tasks = [
     requires: ["Reject Divinity"], 
     cost: { mana: 5, knowledge: 5 },  // Reduced from 5 knowledge to 5
     description: "Creep through the abandoned death church chapel, pry a bone-bound grimoire from a priest's stiff fingers, and feel its pages hum with secrets the gods hid from you.", 
-    notorietyCost: 10 
+    notorietyCost: 10,
+    flavorMessage: "The grimoire's secrets burn in your mind. Knowledge forbidden by the gods now flows through your fingers."
   },
   { 
     name: "Reanimate Crow", 
@@ -183,7 +259,8 @@ let tasks = [
     requires: ["Steal Grimoire"], 
     cost: { mana: 10 }, 
     description: "Trace glyphs in ash and raise a crow from the pyre—proof that death now bends closer to your whispers than any god.", 
-    notorietyCost: 15 
+    notorietyCost: 15,
+    flavorMessage: "The crow rises, its empty eyes seeing what the gods refuse to acknowledge. Death answers your call."
   },
   { 
     name: "Flee Village", 
@@ -195,7 +272,8 @@ let tasks = [
     requires: ["Reanimate Crow"], 
     cost: { mana: 15 }, 
     description: "Slip past torch-bearing elders as they burn plague-ridden streets to cleanse the blight the gods allowed; you flee with ash in your lungs and a stolen bird on your shoulder.", 
-    notorietyCost: 10 
+    notorietyCost: 10,
+    flavorMessage: "You escape into the night, leaving behind a village that chose fire over understanding. The road ahead is dark."
   },
   { 
     name: "Vow Vengeance", 
@@ -207,7 +285,8 @@ let tasks = [
     requires: ["Flee Village"], 
     cost: { mana: 20 }, 
     description: "Under a dead moon you carve an oath into your palm: master death, unseat the negligent gods, and make them feel every unanswered prayer etched into your scars.", 
-    notorietyCost: 10 
+    notorietyCost: 10,
+    flavorMessage: "The oath is carved, the path is set. Vengeance will be yours, and the gods will know fear."
   },
   // The Seed of Ash: Great Choice - EXCLUSIVE CHOICES
   { 
@@ -219,7 +298,8 @@ let tasks = [
     unlocks: ["Choose the Book", "Choose the Blade", "Choose the Mask", "Choose the Seal"], 
     requires: ["Vow Vengeance"], 
     description: "At the communal pyre a gaunt traveler confronts your grief, asking what you will grow from the ash of Oakhaven.", 
-    notorietyCost: 5 
+    notorietyCost: 5,
+    flavorMessage: "The traveler's question hangs in the air. Your choice will shape everything that follows."
   },
   { 
     name: "Choose the Book", 
@@ -230,27 +310,13 @@ let tasks = [
     unlocks: ["Scholar of Silence"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Accept the cold Canticle of Dust and Bone, vowing to understand why gods fear death more than mortals do.", 
-    yields: { evidence: 3, knowledge: 2 },  // ADDED: knowledge yield
+    yields: { evidence: 3, knowledge: 2 },
     resourceMaxIncrease: { evidence: 20 }, 
     choiceGroup: "SeedChoice", 
     choiceKey: "Book", 
     safe: true,
-    exclusive: true  // MARKED AS EXCLUSIVE
-  },
-  { 
-    name: "Collect Abandoned Scrolls", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { scrolls: 2, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
-    description: "Scour ruined huts for discarded scrolls, stockpiling fuel for scholarship.", 
-    unlocked: false, 
-    unlockTask: "Choose the Book", 
-    resourceMaxIncrease: { scrolls: 4 }, 
-    safe: true, 
-    autoRepeat: false 
+    exclusive: true,
+    flavorMessage: "The Canticle's cold logic fills your mind. Knowledge will be your weapon, truth your shield."
   },
   { 
     name: "Choose the Blade", 
@@ -261,28 +327,15 @@ let tasks = [
     unlocks: ["Rally Plague Survivors"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Grip the saint-cutting blade that drinks light, swearing to gather the angry and forgotten into a fist.", 
-    yields: { fury: 5, knowledge: 1 },  // ADDED: knowledge yield
+    yields: { fury: 5, knowledge: 1 },
     resourceMaxIncrease: { fury: 25 }, 
     notorietyCost: 8, 
     choiceGroup: "SeedChoice", 
     choiceKey: "Blade",
-    exclusive: true  // MARKED AS EXCLUSIVE
+    exclusive: true,
+    flavorMessage: "The blade hums with righteous anger. You will gather the broken and forge them into an army."
   },
-  { 
-    name: "Scavenge Broken Arms", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { armaments: 3, supplies: 2 }, 
-    description: "Pick through battle trash for blades and buckles to arm your rebels.", 
-    unlocked: false, 
-    unlockTask: "Choose the Blade", 
-    resourceMaxIncrease: { armaments: 4, supplies: 4 }, 
-    notorietyCost: 6, 
-    autoRepeat: false 
-  },
+ 
   { 
     name: "Choose the Mask", 
     baseTime: 5, 
@@ -292,13 +345,14 @@ let tasks = [
     unlocks: ["Assume White Mask"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Take the smooth white mask and promise to infiltrate temples and cities, rotting faith from within.", 
-    yields: { influence: 4, knowledge: 1 },  // ADDED: knowledge yield
+    yields: { influence: 4, knowledge: 1 },
     resourceMaxIncrease: { influence: 20 }, 
     notorietyCost: 2, 
     choiceGroup: "SeedChoice", 
     choiceKey: "Mask", 
     safe: true,
-    exclusive: true  // MARKED AS EXCLUSIVE
+    exclusive: true,
+    flavorMessage: "The mask fits perfectly. Behind it, you will become whoever you need to be. Faith will crumble from within."
   },
   { 
     name: "Choose the Seal", 
@@ -309,208 +363,28 @@ let tasks = [
     unlocks: ["Seek Sealed Master"], 
     requires: ["Meet Ashen Traveler"], 
     description: "Accept the wax seal of the closed eye, swearing a vow to knowledge alone as you follow a hidden master of hatred.", 
-    yields: { voidFavor: 3, knowledge: 1 },  // ADDED: knowledge yield
+    yields: { voidFavor: 3, knowledge: 1 },
     resourceMaxIncrease: { voidFavor: 15 }, 
     notorietyCost: 6, 
     choiceGroup: "SeedChoice", 
     choiceKey: "Seal",
-    exclusive: true  // MARKED AS EXCLUSIVE
+    exclusive: true,
+    flavorMessage: "The seal burns into your palm. The void answers, and a hidden master awaits your apprenticeship."
   },
-  // Path C: The Mask (Infiltration)
   { 
-    name: "Assume White Mask", 
-    baseTime: 7, 
+    name: "Axiom of Unmaking", 
+    baseTime: 12, 
     proficiency: 0, 
     isActive: false, 
     completed: false, 
-    unlocks: ["Enter City Temple"], 
-    requires: ["Choose the Mask"], 
-    cost: { knowledge: 4 },  // Reduced from 4 to 4 (unchanged, but now achievable)
-    yields: { influence: 5 }, 
-    description: "Learn to breathe through porcelain stillness, adopting a new name fit for temple halls.", 
-    notorietyCost: 6 
+    unlocks: ["Claim Divine Relic", "Offer Willing Sacrifice"], 
+    requires: ["Meet Ashen Traveler"], 
+    cost: { mana: 12, knowledge: 12, evidence: 10 }, 
+    description: "Synthesize fragments, equations, or dark mentors into a principle that could sever gods from worship forever.", 
+    notorietyCost: 18 
   },
   { 
-    name: "Serve Soup Lines", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { influence: 4, knowledge: 1 },  // ADDED: knowledge yield
-    description: "Hand out bowls in the temple kitchens, trading mercy for whispers.", 
-    unlocked: false, 
-    unlockTask: "Assume White Mask", 
-    notorietyCost: 4, 
-    safe: true, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Forge False Papers", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Enter City Temple"], 
-    requires: ["Assume White Mask"], 
-    cost: { influence: 4 }, 
-    yields: { secrets: 3 }, 
-    description: "Craft identities that survive temple scrutiny, broadening your cover.", 
-    resourceMaxIncrease: { influence: 10, secrets: 5 }, 
-    notorietyCost: 6 
-  },
-  { 
-    name: "Spin Market Rumors", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { rumors: 4, influence: 1, knowledge: 1 },  // ADDED: knowledge yield
-    description: "Feed the bazaar with slanted tales that boost your rumor stockpile.", 
-    unlocked: false, 
-    unlockTask: "Assume White Mask", 
-    notorietyCost: 6, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Enter City Temple", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Mimic Liturgies", "Whisper Doubt"], 
-    requires: ["Assume White Mask"], 
-    cost: { influence: 4, knowledge: 3 },  // Reduced from 3 to 3 (unchanged)
-    yields: { influence: 4 }, 
-    description: "Walk among the faithful, mapping their routines and their blind spots beneath stained glass.", 
-    notorietyCost: 8 
-  },
-  { 
-    name: "Trade Choir Secrets", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { influence: 3, evidence: 2, knowledge: 1 },  // ADDED: knowledge yield
-    description: "Swap rumors with choristers during rehearsals, weaving doubt into the verses.", 
-    unlocked: false, 
-    unlockTask: "Enter City Temple", 
-    notorietyCost: 6, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Bribe City Clerk", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Mimic Liturgies", "Whisper Doubt"], 
-    requires: ["Enter City Temple"], 
-    cost: { influence: 6, secrets: 3 }, 
-    yields: { secrets: 4, influence: 2 }, 
-    description: "Purchase access ledgers and service rosters, deepening your reach inside the temple.", 
-    resourceMaxIncrease: { influence: 10, secrets: 5 }, 
-    notorietyCost: 9 
-  },
-  { 
-    name: "Deepen Cover Identities", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Sow Rot in Choir"], 
-    requires: ["Bribe City Clerk"], 
-    cost: { covers: 4, influence: 4 }, 
-    yields: { covers: 2, secrets: 2 }, 
-    description: "Layer new identities atop old ones, broadening how much influence you can safely carry.", 
-    resourceMaxIncrease: { covers: 6, influence: 6 }, 
-    notorietyCost: 10 
-  },
-  { 
-    name: "Mimic Liturgies", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Sow Rot in Choir"], 
-    requires: ["Enter City Temple"], 
-    cost: { influence: 4, knowledge: 4 }, 
-    yields: { influence: 5 }, 
-    description: "Perfect the cadence of prayers to earn deeper access, wearing piety like a borrowed robe.", 
-    notorietyCost: 7 
-  },
-  { 
-    name: "Whisper Doubt", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Fracture Congregation"], 
-    requires: ["Enter City Temple"], 
-    cost: { influence: 5 }, 
-    yields: { influence: 3 }, 
-    description: "Seed quiet questions in confession lines, loosening the mortar of belief one listener at a time.", 
-    notorietyCost: 9 
-  },
-  { 
-    name: "Sow Rot in Choir", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Fracture Congregation"], 
-    requires: ["Mimic Liturgies"], 
-    cost: { influence: 6, knowledge: 4 }, 
-    yields: { influence: 4 }, 
-    description: "Twist hymns into double-meanings that erode faith from within the music itself.", 
-    notorietyCost: 10 
-  },
-  { 
-    name: "Fracture Congregation", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Whisper Doubt", "Sow Rot in Choir"], 
-    cost: { influence: 8, knowledge: 6 }, 
-    yields: { evidence: 3 }, 
-    description: "Witness factions form inside the temple; harvest their confessions as proof of divine neglect.", 
-    notorietyCost: 14 
-  },
-  // Path D: The Seal (Void Apprenticeship)
-  { 
-    name: "Seek Sealed Master", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Walk the Closed Road"], 
-    requires: ["Choose the Seal"], 
-    cost: { knowledge: 4 }, 
-    yields: { voidFavor: 4 }, 
-    description: "Follow the wax sigil through backroads and shuttered chapels toward an unseen master.", 
-    notorietyCost: 7 
-  },
-  { 
-    name: "Meditate on Closed Eye", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { voidFavor: 3, entropy: 2, knowledge: 1 },  // ADDED: knowledge yield
-    description: "Sit before the sealed sigil, letting silence steep until void answers.", 
-    unlocked: false, 
-    unlockTask: "Seek Sealed Master", 
-    notorietyCost: 6, 
-    safe: true, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Walk the Closed Road", 
+    name: "Claim Divine Relic", 
     baseTime: 9, 
     proficiency: 0, 
     isActive: false, 
@@ -590,104 +464,9 @@ let tasks = [
     description: "Bind yourself to knowledge alone, forsaking all other paths as the master brands your vow.", 
     notorietyCost: 12 
   },
-  // Path A: Scholar of Silence (Branch)
-  { 
-    name: "Scholar of Silence", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Calavan Library"], 
-    requires: ["Choose the Book"], 
-    cost: { knowledge: 4 },  // Now achievable with early knowledge generation
-    yields: { evidence: 2 }, 
-    description: "Embrace the Canticle's thesis: death is the only constant and gods are parasites; you set out to prove it.", 
-    notorietyCost: 6 
-  },
-  { 
-    name: "Annotate Canticle Margins", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { insight: 3, evidence: 1, knowledge: 1 },  // ADDED: knowledge yield
-    description: "Scrawl notes between forbidden lines, sharpening the logic of death.", 
-    unlocked: false, 
-    unlockTask: "Scholar of Silence", 
-    resourceMaxIncrease: { insight: 5 }, 
-    safe: true, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Copy Dusty Scrolls", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { knowledge: 4, evidence: 2 }, 
-    description: "Meticulously copy brittle scrolls, compiling cases of divine neglect.", 
-    unlocked: false, 
-    unlockTask: "Scholar of Silence", 
-    safe: true, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Calavan Library", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Historian's Case", "Map Necrotic Equations", "Practice Forbidden Annex"], 
-    requires: ["Scholar of Silence"], 
-    cost: { mana: 5, knowledge: 5 }, 
-    yields: { knowledge: 3, evidence: 2 }, 
-    description: "Enter the decaying stacks of Calavan where dust thickens on heresy and the air hums with suppressed truths.", 
-    notorietyCost: 4 
-  },
-  { 
-    name: "Bind Proof Codex", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Historian's Case", "Map Necrotic Equations"], 
-    requires: ["Calavan Library"], 
-    cost: { knowledge: 6, evidence: 4 }, 
-    yields: { evidence: 3 }, 
-    description: "Stitch gathered claims into a single codex, expanding your ability to hold damning proof.", 
-    resourceMaxIncrease: { evidence: 10 }, 
-    notorietyCost: 6 
-  },
-  { 
-    name: "Restore Grimoire Bindings", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Collect Field Fragments"], 
-    requires: ["Bind Proof Codex"], 
-    cost: { knowledge: 6, evidence: 2 }, 
-    yields: { grimoires: 1 }, 
-    description: "Rebind cracked grimoires so their power can expand your mental vaults.", 
-    resourceMaxIncrease: { grimoires: 2, knowledge: 5 }, 
-    notorietyCost: 8 
-  },
-  { 
-    name: "Collect Field Fragments", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Historian's Case", "Map Necrotic Equations"], 
-    requires: ["Restore Grimoire Bindings"], 
-    cost: { mana: 6 }, 
-    yields: { scrolls: 2, evidence: 1 }, 
-    description: "Gather torn pages from roadside shrines and battlefields, feeding your growing archive.", 
-    resourceMaxIncrease: { scrolls: 4 }, 
-    notorietyCost: 6 
-  },
+
+  
+  
   { 
     name: "Debate Archivist", 
     baseTime: 7, 
@@ -702,83 +481,7 @@ let tasks = [
     safe: true, 
     autoRepeat: false 
   },
-  { 
-    name: "Historian's Case", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Field of Weeping Spears", "Cathedral of the Dawn"], 
-    requires: ["Calavan Library"], 
-    cost: { knowledge: 6 }, 
-    yields: { evidence: 4 }, 
-    description: "Dig through archives for plagues ignored, covenants broken, and the God-Butchering Heresy whispered in footnotes.", 
-    notorietyCost: 7, 
-    choiceGroup: "ScholarBranch", 
-    choiceKey: "Historian", 
-    choiceParentGroup: "SeedChoice", 
-    choiceParentKey: "Book" 
-  },
-  { 
-    name: "Field of Weeping Spears", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Mercenary Company", "Whisper with Ghosts"], 
-    requires: ["Historian's Case"], 
-    cost: { mana: 8, knowledge: 4 }, 
-    yields: { evidence: 2, fury: 2 }, 
-    description: "Travel to the haunted battlefield where a heretic-general was entombed with a fragment of forbidden proof.", 
-    notorietyCost: 12, 
-    choiceGroup: "HistorianSplit", 
-    choiceKey: "Battlefield", 
-    choiceParentGroup: "ScholarBranch", 
-    choiceParentKey: "Historian" 
-  },
-  { 
-    name: "Cathedral of the Dawn", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Feign Acolyte", "Cat Burglar's Plot"], 
-    requires: ["Historian's Case"], 
-    cost: { mana: 6, knowledge: 6 }, 
-    yields: { influence: 2, evidence: 2 }, 
-    description: "Slip toward the radiant cathedral vaults where another fragment lies hidden among relics and hymns.", 
-    notorietyCost: 9, 
-    choiceGroup: "HistorianSplit", 
-    choiceKey: "Cathedral", 
-    choiceParentGroup: "ScholarBranch", 
-    choiceParentKey: "Historian" 
-  },
-  { 
-    name: "Mercenary Company", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Claim Battlefield Fragment"], 
-    requires: ["Field of Weeping Spears"], 
-    cost: { mana: 10 }, 
-    yields: { fury: 4 }, 
-    description: "Join a rough company to cut through the no-man's-land, trading ideals for tactics and scars.", 
-    notorietyCost: 16 
-  },
-  { 
-    name: "Whisper with Ghosts", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Claim Battlefield Fragment"], 
-    requires: ["Field of Weeping Spears"], 
-    cost: { mana: 8, knowledge: 4 }, 
-    yields: { evidence: 3 }, 
-    description: "Coax spectral guides from the spears, bargaining with the dead to reach the heretic's tomb unseen.", 
-    notorietyCost: 13 
-  },
+  
   { 
     name: "Claim Battlefield Fragment", 
     baseTime: 8, 
@@ -792,172 +495,8 @@ let tasks = [
     description: "Prise the God-Butchering fragment from rust and bone, feeling it hum with arguments that could sever faith.", 
     notorietyCost: 12 
   },
-  { 
-    name: "Feign Acolyte", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Steal Cathedral Fragment"], 
-    requires: ["Cathedral of the Dawn"], 
-    cost: { knowledge: 8 }, 
-    yields: { influence: 3 }, 
-    description: "Don robes and prayers, mimicking devotion to infiltrate the vaults from within the choir.", 
-    notorietyCost: 8 
-  },
-  { 
-    name: "Cat Burglar's Plot", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Steal Cathedral Fragment"], 
-    requires: ["Cathedral of the Dawn"], 
-    cost: { mana: 8 }, 
-    yields: { influence: 2 }, 
-    description: "Map guards and locks, readying a silent heist to lift the fragment without ever uttering a psalm.", 
-    notorietyCost: 9 
-  },
-  { 
-    name: "Steal Cathedral Fragment", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Feign Acolyte", "Cat Burglar's Plot"], 
-    cost: { mana: 10, knowledge: 6, influence: 4 }, 
-    yields: { evidence: 5 }, 
-    description: "Slip into the Dawn vaults and lift the heresy fragment, heart pounding beneath stained glass.", 
-    notorietyCost: 14 
-  },
-  { 
-    name: "Map Necrotic Equations", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Collapse Souls", "Seek Dead World"], 
-    requires: ["Calavan Library"], 
-    cost: { knowledge: 8 }, 
-    yields: { evidence: 3 }, 
-    description: "Pursue the Canticle's math: death as cosmic grammar, leading to the need for a Necrotic Singularity.", 
-    notorietyCost: 9, 
-    choiceGroup: "ScholarBranch", 
-    choiceKey: "Equations", 
-    choiceParentGroup: "SeedChoice", 
-    choiceParentKey: "Book" 
-  },
-  { 
-    name: "Model Death Equation", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Collapse Souls", "Seek Dead World"], 
-    requires: ["Map Necrotic Equations"], 
-    cost: { insight: 6, knowledge: 6 }, 
-    yields: { insight: 4 }, 
-    description: "Iterate metaphysical models until the grammar of endings coheres.", 
-    resourceMaxIncrease: { insight: 10 }, 
-    notorietyCost: 10 
-  },
-  { 
-    name: "Synthesize Axiom Primer", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Collapse Souls", "Seek Dead World"], 
-    requires: ["Model Death Equation"], 
-    cost: { insight: 8, scrolls: 4 }, 
-    yields: { insight: 3, evidence: 2 }, 
-    description: "Draft a primer that ties field fragments to the Axiom, widening your mental channels.", 
-    resourceMaxIncrease: { insight: 6, scrolls: 2 }, 
-    notorietyCost: 11 
-  },
-  { 
-    name: "Collapse Souls", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Target Penal Colony", "Target Asylum"], 
-    requires: ["Map Necrotic Equations"], 
-    cost: { mana: 12, knowledge: 6 }, 
-    description: "Plot a ritual to crush hundreds of souls together, a monstrous shortcut toward singularity.", 
-    notorietyCost: 20, 
-    choiceGroup: "EquationSplit", 
-    choiceKey: "Collapse", 
-    choiceParentGroup: "ScholarBranch", 
-    choiceParentKey: "Equations" 
-  },
-  { 
-    name: "Seek Dead World", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Recruit Stonesailor", "Build Void Compass"], 
-    requires: ["Map Necrotic Equations"], 
-    cost: { mana: 10, knowledge: 6 }, 
-    yields: { evidence: 2 }, 
-    description: "Chase legends of a natural Necrotic Singularity in the Heart of the Dead World.", 
-    notorietyCost: 11, 
-    choiceGroup: "EquationSplit", 
-    choiceKey: "SeekDeadWorld", 
-    choiceParentGroup: "ScholarBranch", 
-    choiceParentKey: "Equations" 
-  },
-  { 
-    name: "Target Penal Colony", 
-    baseTime: 11, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Collapse Souls"], 
-    cost: { mana: 12, knowledge: 8 }, 
-    description: "Mark a remote prison as fodder, telling yourself the guilty will fuel your singularity.", 
-    notorietyCost: 18, 
-    choiceGroup: "CollapseTarget", 
-    choiceKey: "Prison", 
-    choiceParentGroup: "EquationSplit", 
-    choiceParentKey: "Collapse" 
-  },
-  { 
-    name: "Target Asylum", 
-    baseTime: 11, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Collapse Souls"], 
-    cost: { mana: 12, knowledge: 8 }, 
-    description: "Fixate on a forgotten sanatorium, convincing yourself that ending their suffering serves your cause.", 
-    notorietyCost: 18, 
-    choiceGroup: "CollapseTarget", 
-    choiceKey: "Asylum", 
-    choiceParentGroup: "EquationSplit", 
-    choiceParentKey: "Collapse" 
-  },
-  { 
-    name: "Recruit Stonesailor", 
-    baseTime: 11, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Seek Dead World"], 
-    cost: { mana: 10, knowledge: 10 }, 
-    yields: { evidence: 2 }, 
-    description: "Persuade the last Stonesailor to guide you across lifeless seas toward the Dead World.", 
-    notorietyCost: 12, 
-    choiceGroup: "DeadWorldRoute", 
-    choiceKey: "Guide", 
-    choiceParentGroup: "EquationSplit", 
-    choiceParentKey: "SeekDeadWorld" 
-  },
+
+
   { 
     name: "Build Void Compass", 
     baseTime: 11, 
@@ -975,423 +514,74 @@ let tasks = [
     choiceParentGroup: "EquationSplit", 
     choiceParentKey: "SeekDeadWorld" 
   },
-  { 
-    name: "Practice Forbidden Annex", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Answer Lich Xyros", "Defy Dawn Inquisitor"], 
-    requires: ["Calavan Library"], 
-    cost: { mana: 6, knowledge: 6 }, 
-    yields: { evidence: 2 }, 
-    description: "Skim the margins of the Canticle, animating rats and whispering with nearby ghosts until eyes take notice.", 
-    notorietyCost: 11, 
-    choiceGroup: "ScholarBranch", 
-    choiceKey: "Annex", 
-    choiceParentGroup: "SeedChoice", 
-    choiceParentKey: "Book" 
-  },
-  { 
-    name: "Answer Lich Xyros", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Practice Forbidden Annex"], 
-    cost: { mana: 10, knowledge: 8 }, 
-    yields: { evidence: 2 }, 
-    description: "Accept the phylactery's summons to apprentice under lich Xyros, trading freedom for structured power.", 
-    notorietyCost: 14, 
-    choiceGroup: "AnnexSplit", 
-    choiceKey: "Xyros", 
-    choiceParentGroup: "ScholarBranch", 
-    choiceParentKey: "Annex" 
-  },
-  { 
-    name: "Defy Dawn Inquisitor", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Slay the Inquisitor", "Corrupt the Inquisitor"], 
-    requires: ["Practice Forbidden Annex"], 
-    cost: { mana: 8, knowledge: 6 }, 
-    description: "An inquisitor arrives; you must decide whether to end or bend this hunter.", 
-    notorietyCost: 13, 
-    choiceGroup: "AnnexSplit", 
-    choiceKey: "Inquisitor", 
-    choiceParentGroup: "ScholarBranch", 
-    choiceParentKey: "Annex" 
-  },
-  { 
-    name: "Slay the Inquisitor", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Defy Dawn Inquisitor"], 
-    cost: { mana: 10 }, 
-    yields: { fury: 3 }, 
-    description: "Strike first and silence the Dawn's investigator, accepting the price of becoming a hunted killer.", 
-    notorietyCost: 20, 
-    choiceGroup: "InquisitorOutcome", 
-    choiceKey: "Slay", 
-    choiceParentGroup: "AnnexSplit", 
-    choiceParentKey: "Inquisitor" 
-  },
-  { 
-    name: "Corrupt the Inquisitor", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Axiom of Unmaking"], 
-    requires: ["Defy Dawn Inquisitor"], 
-    cost: { mana: 8, knowledge: 8 }, 
-    yields: { influence: 3 }, 
-    description: "Show the inquisitor a vision of divine betrayal, wagering you can twist a zealot into an unwilling ally.", 
-    notorietyCost: 14, 
-    choiceGroup: "InquisitorOutcome", 
-    choiceKey: "Corrupt", 
-    choiceParentGroup: "AnnexSplit", 
-    choiceParentKey: "Inquisitor" 
-  },
-  { 
-    name: "Axiom of Unmaking", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Claim Divine Relic", "Offer Willing Sacrifice"], 
-    requires: ["Meet Ashen Traveler"], 
-    cost: { mana: 12, knowledge: 12, evidence: 10 }, 
-    description: "Synthesize fragments, equations, or dark mentors into a principle that could sever gods from worship forever.", 
-    notorietyCost: 18 
-  },
-  { 
-    name: "Claim Divine Relic", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    requires: ["Axiom of Unmaking"], 
-    cost: { mana: 14, knowledge: 10, influence: 4 }, 
-    description: "Hunt a relic of immense power to serve as focal point for the Axiom, a tangible throat to grip.", 
-    notorietyCost: 16 
-  },
-  { 
-    name: "Offer Willing Sacrifice", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    requires: ["Axiom of Unmaking"], 
-    cost: { mana: 10, knowledge: 14, fury: 4 }, 
-    description: "Find a living soul bound intimately to a god, persuading them to become the living focal point of your unmaking.", 
-    notorietyCost: 19 
-  },
-  // Stage 2: Gathering Knowledge (Scholarly Path)
-  { 
-    name: "Track Malakar", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Face Undead Trials"], 
-    requires: ["Vow Vengeance"], 
-    cost: { mana: 5, knowledge: 3 }, 
-    description: "Follow rumors of a lich named Malakar through plague carts and corpse-choked roads.", 
-    notorietyCost: 6, 
-    safe: true 
-  },
-  { 
-    name: "Face Undead Trials", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Study Soul-Binding", "Learn Corpse Preservation"], 
-    requires: ["Track Malakar"], 
-    cost: { mana: 10, knowledge: 2 }, 
-    description: "Endure corridors lined with whispering bones; to earn Malakar's regard you let corpses test your resolve, each strike reminding you what the gods denied.", 
-    notorietyCost: 14 
-  },
-  { 
-    name: "Study Soul-Binding", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Poison Malakar"], 
-    requires: ["Face Undead Trials"], 
-    cost: { knowledge: 6 }, 
-    yields: { evidence: 2 }, 
-    description: "Ink sigils that tether spirit to flesh, learning to knot souls so tightly that even divine will would strain to cut them free.", 
-    notorietyCost: 13 
-  },
-  { 
-    name: "Learn Corpse Preservation", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Poison Malakar"], 
-    requires: ["Face Undead Trials"], 
-    cost: { knowledge: 5 }, 
-    yields: { evidence: 1 }, 
-    description: "Stew resins and cold salts, mastering how to still rot and keep bodies waiting—an art of patience the gods never practiced on your family.", 
-    notorietyCost: 12 
-  },
-  { 
-    name: "Poison Malakar", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Steal Codex of the Veil"], 
-    requires: ["Study Soul-Binding", "Learn Corpse Preservation"], 
-    cost: { mana: 15, knowledge: 5 }, 
-    yields: { evidence: 2 }, 
-    description: "Lace Malakar's chalice with silent venom; as he crumbles, you harvest his rings and whispered passwords, proving loyalty only to your vendetta.", 
-    notorietyCost: 18 
-  },
-  { 
-    name: "Steal Codex of the Veil", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Decipher Soul Anchors", "Learn Mana Leeching"], 
-    requires: ["Poison Malakar"], 
-    cost: { mana: 10, knowledge: 5 }, 
-    yields: { evidence: 2 }, 
-    description: "Prise open hidden vaults to seize the Codex of the Veil—pages of lichdom rites that drip with the contempt the gods showed your dying town.", 
-    notorietyCost: 14 
-  },
-  { 
-    name: "Decipher Soul Anchors", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Infiltrate Libraries"], 
-    requires: ["Steal Codex of the Veil"], 
-    cost: { knowledge: 7 }, 
-    yields: { evidence: 2 }, 
-    description: "Unravel diagrams of soul anchors that pin spirits to the mortal plane, imagining how you might nail a god in place long enough to make them listen.", 
-    notorietyCost: 12 
-  },
-  { 
-    name: "Learn Mana Leeching", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Infiltrate Libraries"], 
-    requires: ["Steal Codex of the Veil"], 
-    cost: { mana: 15, knowledge: 5 }, 
-    description: "Practice drawing mana from living and dead alike, leeching power the way gods leech belief, preparing to turn faith's economy on them.", 
-    notorietyCost: 12 
-  },
-  { 
-    name: "Infiltrate Libraries", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Corrupt Historian"], 
-    requires: ["Decipher Soul Anchors", "Learn Mana Leeching"], 
-    cost: { mana: 10, knowledge: 5, influence: 2 }, 
-    description: "Pose as a grieving scholar, copying ley-line charts under candlelight while archivists mutter prayers that never saved your village.", 
-    notorietyCost: 8, 
-    safe: true 
-  },
-  { 
-    name: "Corrupt Historian", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Access Black Archives"], 
-    requires: ["Infiltrate Libraries"], 
-    cost: { mana: 15, influence: 3 }, 
-    description: "Slip bribes and veiled threats to a weary historian, turning his faith into coin so he unlatches the gate to heretical stacks.", 
-    notorietyCost: 10, 
-    safe: true 
-  },
 
-  // Stage 2B: Path of Ruin (Martial Path)
-  { 
-    name: "Rally Plague Survivors", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Harvest Plague Relics"], 
-    requires: ["Vow Vengeance"], 
-    cost: { mana: 6 }, 
-    yields: { fury: 6 }, 
-    description: "Gather the coughing and the bitter, forging their grief into a clenched fist aimed at the heavens.", 
-    notorietyCost: 12 
+  // Minion creation tasks - Available to all paths
+  {
+    name: "Unlock Control",
+    baseTime: 8,
+    proficiency: 0,
+    isActive: false,
+    completed: false,
+    requires: ["Reanimate Crow"],
+    unlocks: ["Raise Skeleton Warrior", "Raise Zombie Horde", "Create Wraith"],
+    cost: { mana: 15, knowledge: 5 },
+    description: "Learn to command the undead, unlocking your capacity to control minions.",
+    resourceMaxIncrease: { control: 10 },
+    notorietyCost: 8,
+    flavorMessage: "The first threads of control weave through your mind. You can command more than just a crow."
   },
-  { 
-    name: "Drill Ashen Fighters", 
-    baseTime: 6, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { fury: 5, mana: 2 }, 
-    description: "Run brutal drills with survivors in burned courtyards, turning rage into formation.", 
-    unlocked: false, 
-    unlockTask: "Rally Plague Survivors", 
-    notorietyCost: 10, 
-    autoRepeat: false 
+  {
+    name: "Raise Skeleton Warrior",
+    baseTime: 10,
+    proficiency: 0,
+    isActive: false,
+    completed: false,
+    repeatable: true,
+    requires: ["Unlock Control"],
+    unlockTask: "Unlock Control",
+    cost: { mana: 20, control: 2 },
+    description: "Raise a basic skeleton warrior to serve you. Power scales with your mastery.",
+    yields: { },
+    notorietyCost: 5,
+    maxCompletions: 5,
+    completionsThisLoop: 0,
+    autoRepeat: false,
+    createsMinion: { name: "Skeleton Warrior", power: 5, controlCost: 2, automates: [] }
   },
-  { 
-    name: "Harvest Plague Relics", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Forge Boneblade"], 
-    requires: ["Rally Plague Survivors"], 
-    cost: { mana: 8, knowledge: 3 }, 
-    yields: { fury: 4 }, 
-    description: "Scavenge charms, godstone shards, and plague idols from the ruins, twisting them into tools of defiance.", 
-    notorietyCost: 14 
+  {
+    name: "Raise Zombie Horde",
+    baseTime: 12,
+    proficiency: 0,
+    isActive: false,
+    completed: false,
+    repeatable: true,
+    requires: ["Unlock Control"],
+    unlockTask: "Unlock Control",
+    cost: { mana: 15, control: 1 },
+    description: "Raise multiple weak zombies. Quantity over quality. Power scales with your mastery.",
+    yields: { },
+    notorietyCost: 4,
+    maxCompletions: 10,
+    completionsThisLoop: 0,
+    autoRepeat: false,
+    createsMinion: { name: "Zombie", power: 2, controlCost: 1, automates: [] }
   },
-  { 
-    name: "Scrap for Jagged Steel", 
-    baseTime: 7, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    repeatable: true, 
-    yields: { armaments: 4 }, 
-    description: "Tear metal from ruined gates and armor to arm your growing band.", 
-    unlocked: false, 
-    unlockTask: "Harvest Plague Relics", 
-    notorietyCost: 12, 
-    autoRepeat: false 
-  },
-  { 
-    name: "Hammer Warplate", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Forge Boneblade"], 
-    requires: ["Scrap for Jagged Steel"], 
-    cost: { mana: 6, armaments: 4 }, 
-    yields: { armaments: 3, fury: 2 }, 
-    description: "Forge crude plate and blades, letting each clang harden your legion's resolve.", 
-    resourceMaxIncrease: { armaments: 8, fury: 5 }, 
-    notorietyCost: 14 
-  },
-  { 
-    name: "Raid Supply Caravan", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Inspire War Songs"], 
-    requires: ["Harvest Plague Relics"], 
-    cost: { mana: 8 }, 
-    yields: { supplies: 6, morale: 3, notoriety: 5 }, 
-    description: "Ambush a caravan to seize grain and faith trinkets, feeding your rebels and anger.", 
-    resourceMaxIncrease: { supplies: 8, morale: 6 }, 
-    notorietyCost: 16 
-  },
-  { 
-    name: "Inspire War Songs", 
-    baseTime: 8, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Raise Plague Legion"], 
-    requires: ["Raid Supply Caravan"], 
-    cost: { supplies: 6 }, 
-    yields: { morale: 5, fury: 2 }, 
-    description: "Teach war songs that knit morale, turning food and fury into marching rhythm.", 
-    resourceMaxIncrease: { morale: 6 }, 
-    notorietyCost: 12 
-  },
-  { 
-    name: "Forge Boneblade", 
-    baseTime: 9, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Raise Plague Legion"], 
-    requires: ["Harvest Plague Relics"], 
-    cost: { mana: 12, knowledge: 5, armaments: 6 }, 
-    yields: { fury: 3, armaments: 2 }, 
-    description: "Melt relic metal with marrow and carve runes so the blade remembers every prayer the gods ignored.", 
-    notorietyCost: 15 
-  },
-  { 
-    name: "Raise Plague Legion", 
-    baseTime: 11, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Defile Roadside Shrine"], 
-    requires: ["Forge Boneblade"], 
-    cost: { mana: 15, knowledge: 5, armaments: 6, fury: 5 }, 
-    yields: { fury: 6, armaments: 2 }, 
-    description: "Call fallen townsfolk from shallow graves, arming them with borrowed rage to march beneath your banner.", 
-    notorietyCost: 22 
-  },
-  { 
-    name: "Defile Roadside Shrine", 
-    baseTime: 10, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Confront Dawn Acolyte"], 
-    requires: ["Raise Plague Legion"], 
-    cost: { mana: 10, fury: 4 }, 
-    description: "Drag your legion to a gleaming shrine, smother its candles with ash, and etch your oath over the gods' carved names.", 
-    notorietyCost: 24 
-  },
-  { 
-    name: "Confront Dawn Acolyte", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    unlocks: ["Seize Black Archives"], 
-    requires: ["Defile Roadside Shrine"], 
-    cost: { mana: 15, knowledge: 5, fury: 6 }, 
-    description: "Face a wandering acolyte sent to cleanse the blight; when he falls, you take his sigils as a key to divine strongholds.", 
-    notorietyCost: 25 
-  },
-  { 
-    name: "Seize Black Archives", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    requires: ["Confront Dawn Acolyte"], 
-    cost: { mana: 15, knowledge: 8, fury: 8 }, 
-    description: "Storm the forbidden stacks with your legion, ripping knowledge free by force instead of favor.", 
-    resourceMaxIncrease: { knowledge: 20, fury: 10 }, 
-    notorietyCost: 28 
-  },
-  { 
-    name: "Access Black Archives", 
-    baseTime: 12, 
-    proficiency: 0, 
-    isActive: false, 
-    completed: false, 
-    requires: ["Corrupt Historian"], 
-    cost: { knowledge: 10 }, 
-    description: "Breathe in dust and blasphemy as you pore over banned tomes, charting a path to divinity's throat with ink and spite.", 
-    resourceMaxIncrease: { knowledge: 25 }, 
-    safe: true 
+  {
+    name: "Create Wraith",
+    baseTime: 15,
+    proficiency: 0,
+    isActive: false,
+    completed: false,
+    repeatable: true,
+    requires: ["Unlock Control"],
+    unlockTask: "Unlock Control",
+    cost: { mana: 30, knowledge: 10, control: 5 },
+    description: "Bind a powerful wraith to your service. Power scales with your mastery.",
+    yields: { },
+    notorietyCost: 8,
+    maxCompletions: 3,
+    completionsThisLoop: 0,
+    autoRepeat: false,
+    createsMinion: { name: "Wraith", power: 15, controlCost: 5, automates: ["Salvage Altar Shards"] }
   }
 ];
